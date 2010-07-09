@@ -1,0 +1,89 @@
+*
+{
+	margin: 0;
+	padding: 0;
+	border: none;
+	font-family: monospace;
+}
+input
+{
+	border: 1px solid silver;
+}
+body 
+{
+	background-color: #cecece;
+	background-image: url('/2009/12/31/permascroll.bg-tile.png');
+}
+body > .page
+{
+	width: 46em;
+	margin: 1em auto;
+	padding: 1em;
+	border: 1px solid silver;
+	background-color: white;
+/*	background-image: url('/2009/12/31/permascroll.page-tile.png');*/
+}
+.page > .document
+{
+/*	border: 1px solid fuchsia;*/
+	margin: 1em -1em 1em -1em;
+	padding: 0 1em;
+}
+.document > *
+{
+}
+
+.document  p
+{
+	text-indent: 1.5em;
+}
+.document  p.first
+{
+	text-indent: 0;
+}
+.document h1 {
+/*	border: 1px solid orange;*/
+	margin-top: 2em;
+}
+.document h2 {
+	margin-top: 1em;
+}
+.document p {
+/*	border: 1px solid purple;*/
+}
+.footer hr,
+.header hr 
+{
+	display: none;
+}
+.footer, 
+.header,
+.closure
+{
+	background-color: #dcdcdc;
+	padding: 1.5em 1em;
+	margin: -1em;
+}
+.footer > *,
+.header > *,
+.closure > *
+{
+	font-size: 0.8em;
+}
+.footer 
+{
+	margin-top: 2em;
+	padding-top: 0.5em;
+}
+.header
+{
+	padding-bottom: 0.5em;
+}
+.closure
+{
+	background-color: #888;
+	color: #bbb;
+	margin-top: 0;
+	padding: 0 1em 1em 1em;
+}
+

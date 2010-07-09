@@ -1,0 +1,27 @@
+application: permascroll
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+- url: /2009/12/31/permascroll(.*)(\.png|\.js|\.css)
+  static_files: 2009/12/31/permascroll\1\2
+  upload: 2009/12/31/permascroll(.*)(\.png|\.js|\.css)
+
+- url: /feed.*
+  script: permascroll/server_handler.py
+  secure: optional
+  login: required
+
+- url: /user.*
+  script: permascroll/server_handler.py
+  secure: always
+  login: required
+
+- url: /api.*
+  script: permascroll/xmlrpc_handler.py
+
+- url: /.*
+  script: permascroll/server_handler.py
+
+
