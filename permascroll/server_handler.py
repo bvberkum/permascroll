@@ -4,33 +4,17 @@ Together with Form handler contains main HTTP serving routines.
 """
 import wsgiref
 from cgi import parse_qs
+import logging
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 
-from permascroll import rc, model
+from permascroll import rc, model, util, api
+from permascroll.exception import *
 
 
-def merge(d, **kwds):
-
-    """
-    Recursive dictionary merge, ie. multi-level update.
-
-    Set D[k] = kwds[...][k] where D is any dictionary nested within `d`.
-    Works like dict.update but recurses and updates nested dictionaries
-    first.
-    """
-
-    # merge sublevels before overwriting on update
-    for k in kwds:
-        if isinstance( kwds[k], dict ):
-            if k in d:
-                subl = kwds[k]
-                kwds[k] = merge( d[k], **subl )
-    d.update(kwds)
-    return d
-
+logger = logging.getLogger(__name__)
 
 class AbstractHandler(webapp.RequestHandler):
 
@@ -62,7 +46,7 @@ class AbstractHandler(webapp.RequestHandler):
     def print_tpl(self, **kwds):
         "Helper function for outputting template formatted from keywords."
 
-        data = merge( AbstractHandler.DATA.copy(), **kwds )
+        data = util.merge( AbstractHandler.DATA.copy(), **kwds )
 
         tpl = 'main'
         if 'template' in data:
@@ -75,7 +59,7 @@ class AbstractHandler(webapp.RequestHandler):
     def print_form(self, fields=[], form={}, **kwds):
         "Helper function for outputting a form"
 
-        data = merge( AbstractHandler.DATA.copy(), **kwds )
+        data = util.merge( AbstractHandler.DATA.copy(), **kwds )
 
         if fields:
             form.update({'fields': fields})
@@ -88,33 +72,113 @@ class AbstractHandler(webapp.RequestHandler):
 
     def print_not_found(self, **kwds):
         self.error(404)
-        kwds = merge( kwds, **{'title':'Document Not Found','doc_info':{'HTTP Status': 404}} )
-        data = merge( AbstractHandler.DATA.copy(), **kwds )
+        kwds = util.merge( kwds, **{'title':'Document Not Found','doc_info':{'HTTP Status': 404}} )
+
+        data = util.merge( AbstractHandler.DATA.copy(), **kwds )
 
         self.response.out.write(template.render(
             rc.TEMPLATES['http-error'], data))
 
 
+class AbstractNodeHandler(AbstractHandler):
+
+    def update(self, *tumblers, **props):
+        node = self.fetch(*tumblers)
+        api.update_node(node, **props)
+        return node
+
+    def delete(self, *tumblers):
+        node = api.get(*tumblers)
+        node.delete()
+        return node
+
+
 # Concrete handlers
 
-class TumblerHandler(AbstractHandler):
+class NodeHandler(AbstractNodeHandler):
 
-    def get(self, tumbler=None):
-        doc_info={'Address': tumbler, 'Kind': 'Node' }
-        if tumbler.startswith('1.4'):
-            node = model.get(tumbler)
-            if node:
-                doc_info['Kind'] = node.kind()
-                tumbler = map(int, tumbler.split('.'))
-                self.print_tpl(doc_title=node.title, doc_info=doc_info, doc_body=tumbler,
-                       template='node')
-            else:
-                self.print_not_found(doc_info=doc_info)
-        else:
-            self.print_not_found(doc_info=doc_info)
+    @util.catch
+    @util.http_q(':tumbler',':tumbler',':tumbler')
+    def get(self, *tumblers):
+        "Get the Node at address node(/channel(/entry)). "
+        return api.get(*tumblers)
+
+    @util.catch
+    @util.http_q(':tumbler',':tumbler',':tumbler','title:unicode')
+    def post(self, *tumblers, **props):
+        "Create new Node under address. "
+        logging.info(tumblers)
+        self.response.out.write('node: '+`tumblers`)
+        tcnt = len(tumblers)
+        newcroot = self.request.uri.endswith('/')
+        kind = 'node'
+        if tcnt == 1:
+            if newcroot: kind = 'channel'
+        elif tcnt == 2:
+            if not newcroot: kind = 'channel'
+            else: kind = 'entry'
+        elif tcnt == 3:
+            if not newcroot: kind = 'entry'
+            else: assert False, "route error"
+        return api.create_node(kind=kind, *tumblers, **props)
+
+    @util.catch
+    @util.http_q(':tumbler',':tumbler',':tumbler','title:unicode')
+    def put(self, *tumblers, **props):
+        "Update the Node at address `tumbler`. "
+        return self.update(*tumblers, **props)
+
+    @util.catch
+    @util.http_q(':tumbler',':tumbler',':tumbler')
+    def delete(self, *tumblers):
+        "Delete the Node at address `tumbler`. "
+        return self.delete_(*tumblers)
+
+
+class QueryHandler(AbstractHandler):
+
+    @util.catch
+    @util.http_q(':span_or_address', ':span_or_address', ':span_or_address')
+    def get(self, *args):
+        logging.info(args)
+        self.response.out.write('q:'+`args`)
+        return
+        "Get the Nodes at address `tumbler`. "
+        return api.get(t_node, t_channel, t_item)
+
+
+class ContentHandler(AbstractNodeHandler):
+
+    @util.catch
+    @util.http_q(':tumbler',':tumbler',':tumbler',':span_or_address')
+    #def get(self, t_node, t_channel, t_item, t_v):
+    def get(self, *args):
+        logging.info(args)
+        self.response.out.write('content: '+`args`)
+    #    "Get the Content at address `tumbler`. "
+    #    return api.deref(t_node, t_channel, t_item, t_vrange)
+
+    @util.catch
+    @util.http_q(':tumbler',':tumbler',':tumbler','data:blob','type:mime')
+    def post(self, t_node, t_channel, t_item, **props):
+        "Create a Content under address `tumbler`. "
+        return self.create(base_tumbler, **props)
+
+    @util.catch
+    @util.http_q(':tumbler',':tumbler',':tumbler',':span',
+            'data:blob', 'type:mime')
+    def put(self, t_node, t_channel, t_item, t_vrange, **props):
+        "Update the Content at address `tumbler`. "
+        return self.update(t_node, t_channel, t_item, t_vrange, **props)
 
 
 class FrontPage(AbstractHandler):
+
+    def options(self):
+        return
+
+    def head(self):
+        return
 
     def get(self):
         self.print_tpl(
@@ -174,6 +238,7 @@ class Permascroll(AbstractHandler):
             self.error(500)
             print validator.next()
 
+
 class FeedHandler(AbstractHandler):
 
     def get(self, idx_feed=None, idx_entry=None):
@@ -183,7 +248,7 @@ class FeedHandler(AbstractHandler):
             pass
 
     def get_feed(self, idx_feed):
-        feed = model.Feed.all().filter('index=', int(idx_feed)).fetch(1)
+        feed = model.Space.all().filter('index=', int(idx_feed)).fetch(1)
         if not feed:
             self.print_not_found(doc_body='There is no feed at index <span '
                     'class="feed index">%s</span>.' % idx_feed)
@@ -306,46 +371,57 @@ class NotFoundPage(AbstractHandler):
                 (who, who, host))
         #self.request.path)
 
-def reDir(path):
+
+def reDir(path, permanent=True, append=False):
 
     class ReDir(webapp.RequestHandler):
 
+        def _redir(self):
+            if append:
+                path = self.request.uri + path
+            self.redirect(path, permanent)
+
         def get(self):
-            self.redirect(path)
+            self._redir()
 
         def post(self):
-            self.redirect(path)
-
-        def delete(self):
-            self.redirect(path)
+            self._redir()
 
     return ReDir
 
 
 # URL - Handler mapping
 
-#sitemap = [
-#        ('', 'frontpage'),
-#        ('frontpage', FrontPage),
-#        ('user/', HomePage),
-#        ('user/%(user-idx)i', HomePage),
-#        ('feed/', FeedHandler),
-#        ('feed/%(feed-idx)i/', FeedHandler),
-#        ('feed/%(feed-idx)i/entry/', FeedHandler),
-#        ('feed/%(feed-idx)i/entry/%(entry-idx)i/', FeedHandler)
-#]
+tumbler = '[1-9][0-9]*(?:\.[1-9][0-9]*)*'
+offset = '%7E0\.[1-9][0-9]*'
 endpoints = [
-    ('/feed', reDir('/feed/')),
-    ('/feed/', FeedHandler),
-    (r'/feed/([1-9][0-9]*)/entry/([1-9][0-9]*)/?', EntryHandler),
-    (r'/feed/([1-9][0-9]*)/?', FeedHandler),
-    (r'/feed/([1-9][0-9]*|index).html', FeedBrowser),
-    ('/user', reDir('/user/')),
-    ('/user/(.*)', HomePage),
+    ('/node', reDir('/node/')),
+    # nodes
+    (r'/node/', NodeHandler),
+    (r'/node'+1*'/(%(tumbler)s)/?' % locals(), NodeHandler),
+    (r'/node'+2*'/(%(tumbler)s)/?' % locals(), NodeHandler),
+    (r'/node'+3*'/(%(tumbler)s)/?' % locals(), NodeHandler),
+    #(r'/node/(%(tumbler)s)' % locals(), ReDir),
+    #(r'/node/(%(tumbler)s)/(%(tumbler)s)' % locals(), ReDir),
+    #(r'/node'+''.join(2*'/(%(tumbler)s)')+'/(%(tumbler)s)', ReDir),
+    # node- range queries
+    (r'/node/(%(tumbler)s%(offset)s)' % locals(), QueryHandler),
+    (r'/node/(%(tumbler)s)/(%(tumbler)s%(offset)s)' % locals(), QueryHandler),
+    (r'/node/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s%(offset)s)' % locals(), QueryHandler),
+    # content and content-range
+    (r'/node/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s%(offset)s)' % locals(),
+        ContentHandler),
+
+    #('/feed', reDir('/feed/')),
+    #('/feed/', FeedHandler),
+    #(r'/feed/([1-9][0-9]*)/entry/([1-9][0-9]*)/?', EntryHandler),
+    #(r'/feed/([1-9][0-9]*)/?', FeedHandler),
+    #(r'/feed/([1-9][0-9]*|index).html', FeedBrowser),
+#    ('xmlrpc', XMLRPCApp),
+    #('/user', reDir('/user/')),
+    #('/user/(.*)', HomePage),
     ('/', reDir('/frontpage')),
     ('/frontpage', FrontPage),
-    ('/([1-9]+(?:[1-9]*\.[0-9]+[0-9]*)*)', TumblerHandler),
-#    ('xmlrpc', XMLRPCApp),
     ('/.*', NotFoundPage)
 ]
 application = webapp.WSGIApplication( endpoints,

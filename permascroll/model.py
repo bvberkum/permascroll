@@ -1,13 +1,4 @@
-""" Permascroll <>----- Feed <>------ Entry
-                         ^              entry_id  
-                         v               | 
-                         |               |
-                         |               v
-                    Mailinglist <>--- MIMEMessage
-                                        message_id
-
-
-
+""" 
 - Feeds and Entries in a Feed are counted.                    
 - Mailinglist subclasses abstract class Feed, every list counts as a feed.
 - MIMEMessage does not subclass non-abstract Entry, messages may appear in
@@ -25,7 +16,7 @@ import random
 from cgi import parse_qs
 from google.appengine.ext import db
 from google.appengine.api import memcache
-from google.appengine.ext.db import polymodel, djangoforms as gappforms
+from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 
 
 """
@@ -48,10 +39,10 @@ class CounterShard(db.Model):
     partial_count = db.IntegerProperty(required=True, default=0)
 
 def get_count(name):
-	total = 0
-	for counter in CounterShard.all().filter('name = ', name):
-		total += counter.partial_count
-	return total
+    total = 0
+    for counter in CounterShard.all().filter('name = ', name):
+        total += counter.partial_count
+    return total
 
 def increment(name):
     config = CounterShardConfig.get_or_insert(name, name=name)
@@ -65,60 +56,89 @@ def increment(name):
         counter.put()
         return counter.partial_count
     count = db.run_in_transaction(txn)
-	#memcache.incr(name)
+    #memcache.incr(name)
 
 
 """
 Main classes
+
+-  1 First Docuverse
+-  1.4.1 A Node
+-  1.4.1.0.1 first channel for node
+-  1.4.1.0.1.0.1 first entry therein..
+-  1.4.1.0.1.0.1.0.1 first vstr addr.
 """
-
-class Permascroll(db.Model):
-
+class Docuverse(db.Model):
     """
-    Main entity, a list of tumbler, space-kind records.
+    Represented by the Ur-digit, the first digit of a tumbler address. 
+    There are as many Docuverses as there are Ur-digits, in normal operation
+    just 1.
     """
+    length = db.IntegerProperty()
+    "Nr. of contained nodes. "
 
-    tumbler_address = db.StringProperty()
-    kind_of_space = db.StringProperty()
+class AbstractNode(db.Model):
+    position = db.IntegerProperty(required=True)
+    "Position on parent container (the last digit of the tumbler). "
+
+    length = db.IntegerProperty(default=0)
+    "Nr. of contained nodes. "
+
+    @property
+    def base(self):
+        return self.parent()
+
+    @property
+    def tumbler(self):
+        "The tumbler URI (key name) for this node. "
+        return self.key().name()
+
+    title = db.StringProperty(required=False)
+    "Unicode string, uniqueness only required for certain Node types. "
+
+class Node(AbstractNode, db.Model):
+    # parent = Docuverse
+    base = db.SelfReferenceProperty(required=False)
+    "Root Node's are based on a Docuverse, others on a Node. "
+
+class Channel(AbstractNode, db.Model):
+    # parent = Node
+    base = db.SelfReferenceProperty(required=False)
+
+class Entry(AbstractNode, db.Model):
+    # parent = Channel
+    base = db.SelfReferenceProperty(required=False)
+    "Root entry's are based in a Channel, others have a parent Entry. "
+
+    content = db.ListProperty(db.Key)
+    "One or more keys for Content objects, implementing one or more v-streams.  "
+   
 
 
-class Node(db.Model):
+class LiteralContent(db.Model):
+    data = db.StringProperty()
+    #encoding = PlainStringProperty()
+    "Original codec/charset of the text data. "
+    md5_digest = db.BlobProperty()
+    "MD5 digest of bytestring. "
+    size = db.IntegerProperty()
+    "Nr. of bytes (length of bytestring). "
+    length = db.IntegerProperty()
+    "Nr. of characters (length of unicode-text string)."
 
-    """
-    Abstract record, numbered sequentially and hierarchically structured.
-
-    Instances of the two subclasses are counted by the sharded counters 'space' and
-    'item'. parent, index pairs should ofcourse be unique. node_id too as that
-    serves as keynames for the actual records. Each node is identified (by
-    keyname) using a tumbler which are created in order and hierchically. 
-    Mappings of tumbler, kind are kept for subclasses of Space, see 
-    Permascroll db.Model.
-    """
-
-    index = db.IntegerProperty( )
-    title = db.StringProperty()
-	# key_name = tumbler URI
-    node_id = db.LinkProperty( required=True ) # web URI
-    parent_id = db.LinkProperty( ) # tumbler URI
+class LiteralVStream(object):
+    "Adapter for LiteralContent? "
+    def __init__(self, content):
+        self.adaptee = content
+    # vstream = adaptee.data[0:adaptee.length]
 
 
-class Space(Node):
-
-    """
-    Abstract container class.
-    """
-
-    node_kind = 'space'
 
 
-class Item(Node):
 
-    """
-    Abstract member of Space.
-    """
-
-    node_kind = 'item'
-
+class Unused:
+    node_id = db.LinkProperty( )
+    "A (Web) URI for the node, applicable for non-original content. "
 
 """
 MIME message support.
@@ -151,7 +171,7 @@ class MIMEMessage(db.Model):
         return msg
 
 
-class Mailinglist(Space):
+class Mailinglist(Channel):
 
     """
     List of MIMEMessages.
@@ -233,42 +253,7 @@ def validate(data, headers, kind):
 
     yield form
 
-def get(tumbler):
-    # split hierarchical components (server, account, document)
-    parts = tumbler.split('.0.')
 
-    # return record for deepest component,
-    # starting at the top:
-
-    server = Permascroll.get(db.Key(parts[0]))
-    if not server:
-        return # tumbler not found
-    elif len(parts)==1:
-        return parse[0], server
-
-    account = Permascroll.get(db.Key('.0.'.join(parts[0:2])))
-    if not account:
-        return # tumbler not found
-    elif len(parts)==2:
-        return '.0.'.join(parts[0:2]), account
-
-    user = users.get_current_user()
-
-#    if not user:
-#        user = 'anonymous'
-#    if not has_access( account.node_kind, account.node_id ):
-#        return 
-
-    document = Node.get()
-    if not document:
-        return
-    else:
-        return '.0.'.join(parts[0:2]), account
-
-    map(int, tumbler.split('.'))
-
-    kind = Permascroll.all().filter('tumbler=', tumbler).kind
-    return Node(key_name=tumbler, node_id=db.Link('http://foo/'+tumbler))
 
 # Oldish
 class Unique(db.Model):

@@ -4,6 +4,13 @@ runtime: python
 api_version: 1
 
 handlers:
+- url: /core/app-stats.*
+  script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
+
+- url: /core/admin.*
+  script: $PYTHON_LIB/google/appengine/ext/admin
+  login: admin
+
 - url: /2009/12/31/permascroll(.*)(\.png|\.js|\.css)
   static_files: 2009/12/31/permascroll\1\2
   upload: 2009/12/31/permascroll(.*)(\.png|\.js|\.css)
