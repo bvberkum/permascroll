@@ -101,14 +101,16 @@ class NodeHandler(AbstractNodeHandler):
     @util.http_q(':tumbler',':tumbler',':tumbler')
     def get(self, *tumblers):
         "Get the Node at address node(/channel(/entry)). "
-        return api.get(*tumblers)
+        v = api.get(*tumblers)
+        logger.info(v)
+        return v
 
     @util.catch
     @util.http_q(':tumbler',':tumbler',':tumbler','title:unicode')
     def post(self, *tumblers, **props):
         "Create new Node under address. "
-        logging.info(tumblers)
-        self.response.out.write('node: '+`tumblers`)
+        #logging.info(tumblers)
+        #self.response.out.write('node: '+`tumblers`)
         tcnt = len(tumblers)
         newcroot = self.request.uri.endswith('/')
         kind = 'node'

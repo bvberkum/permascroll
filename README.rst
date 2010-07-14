@@ -80,38 +80,6 @@ shopping lists.
 HTTP API
 ---------
 
-Permascroll
-    - ``/node/:node``
-    - ``/node/:node/:channel/:item/``
-
-Channel
-	- ``/feed/:index/entry/:index.html``
-	- ``/feed/:index/entry/:index``
-
-	Properties
-		index
-		label
-		length
-
-		created
-		modified
-		updated
-	
-Entry 
-	- ``/feed/:index/entry/:index``
-	- ``/feed/:index/entry/by-date/...``
-
-	Properties
-		index
-		feed
-		published
-		updated
-		length
-
-
-URL Space
----------
-
 Node 
    - tumbler
    - base

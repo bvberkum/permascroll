@@ -11,26 +11,21 @@ def get(*tumblers):
     Dereference tumbler and return Node, Channel, Entry 
     (depending on component count) or raise NotFound.
     """
-    tcnt = len(tumblers)
-    
-    # return record for deepest component,
-    # starting at the top
     docuverse = get_root()
-    if not tcnt:
+    if not tumblers:
         return docuverse
-    elif tcnt == 1:
-        node = Node.get_by_key_name(str(tumblers[0]), docuverse)
-    elif tcnt == 2:
-        key = db.Key.from_path('Channel', str(tumblers[1]), parent=docuverse)
-        node = Channel.get(key)
-    elif tcnt == 3:
-        key = db.Key.from_path('Channel', str(tumblers[1]), 'Entry',
-                str(tumblers[1]), parent=docuverse)
-        node = Entry.get(key)
+    
     else:
-        raise Exception, "Need 1, 2 or 3 tumbler address components. "
-    assert node, tumblers
-    return node
+        kind = Node
+        tcnt = len(tumblers)
+        if tcnt == 2: kind = Channel
+        elif tcnt == 3: kind = Entry
+        node = kind.get_by_key_name(
+                '.0.'.join(map(str, tumblers)))
+        if not node:
+            raise NotFound, '.0.'.join(map(str, tumblers))
+
+        return node
 
 def fetch(*tumblers):
     try:
@@ -39,6 +34,7 @@ def fetch(*tumblers):
         return None
 
 def get_root():
+    "The root has no address but keeps track of Ur-digits--it counts docuverses. "
     base = Docuverse.all().get()
     if not base:
         base = Docuverse(key_name='docuverse', length=0)
@@ -46,72 +42,63 @@ def get_root():
     return base
 
 def new_root(**props):
+    "Create new docuverse. "
     base = get_root()
     base.length += 1
     base.put()
-    new = Node(key_name=str(base.length), parent=base, position=base.length, **props)
+    new = Node(key_name=str(base.length), position=base.length, **props)
     new.put()
     return new
 
 def create_node(*tumblers, **props):
     kind = props.get('kind','node')
     if 'kind' in props: del props['kind']
+    # New ur-verse
     if not tumblers:
-        # New ur-verse
         assert kind == 'node'
         return new_root(**props)
-    base = fetch(*tumblers)
+    # New node of kind beneath address
+    base = get(*tumblers)
+    assert base, tumblers
     subnode = \
         ((kind == 'node') and isinstance(base, Node)) or \
         ((kind == 'channel') and isinstance(base, Channel)) or \
         ((kind == 'entry') and isinstance(base, Entry))
-    logger.info([base, tumblers, subnode])
     if subnode:
-        return create_subnode(base, kind=kind, **props)
+        return _new_node(None, base, kind=kind, **props)
     else:
-        return create_node_for(base, kind=kind, **props)
-
-def create_subnode(base, kind, **props):
-    return _new_node(None, base, kind=kind, **props)
-
-def create_node_for(parent, kind, **props):        
-    return _new_node(parent, None, kind=kind, **props)
+        return _new_node(base, None, kind=kind, **props)
+    logger.info([base, tumblers, subnode])
 
 def _new_node(parent, base, kind=None, **props):
-    if parent: e = parent
-    elif base: e = base
+    if parent:
+        parent.leafs += 1
+        tumbler = "%s.0.%s" % (parent.tumbler, parent.leafs)
+        pos = parent.leafs
     else:
-        raise Exception, (parent, base)
-    #
-    e.length += 1
-    tumbler = "%s.%s" % (e.tumbler, e.length)
-    e.put()
-    pos = e.length
-    #
+        base.length += 1
+        tumbler = "%s.%s" % (base.tumbler, base.length)
+        pos = base.length
     if kind == 'node':
         assert isinstance(parent, Docuverse) or \
                 isinstance(base, Node), (parent, base)
-        new = Node(key_name=tumbler, parent=parent, position=pos, **props)
+        new = Node(key_name=tumbler, position=pos, **props)
     elif kind == 'channel':
         assert isinstance(parent, Node) or \
                 isinstance(base, Channel), (parent, base)
-        new = Channel(key_name=tumbler, parent=parent, position=pos, **props)
+        new = Channel(key_name=tumbler, position=pos, **props)
     elif kind == 'entry':
         assert isinstance(parent, Channel) or \
                 isinstance(base, Entry), (parent, base)
-        new = Entry(key_name=tumbler, parent=parent, position=pos, **props)
+        new = Entry(key_name=tumbler, position=pos, **props)
     else:
         raise Exception, kind
-    if base:
-        new.base = base
+    if parent:
+        parent.put()
+    else:        
+        base.put()
     new.put()
     return new
-
-#def create_space(node, **props):
-#    return create_node(node, kind='space', **props)
-#
-#def create_item(space, **props):
-#    return create_node(node, kind='item', **props)
 
 def update_node(node, **props):
     for k, v in props.items():
@@ -120,6 +107,8 @@ def update_node(node, **props):
     node.put()        
 
 def put_node(tumbler, kind='node', **props):
+    "Convenience, create node but first assert position. "
+    # XXX: transaction
     p = tumbler.rfind('.')
     base = get(tumbler[:p])
     assert base.length+1 == int(tumbler[p-1:])

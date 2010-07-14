@@ -1,21 +1,48 @@
 #!/bin/sh
 init_nodes()
 {
-    curl $CURL/node/ -F title="Docuverse I"
-    curl $CURL/node/ -F title="Docuverse II"
-    curl $CURL/node/ -F title="Docuverse III"
-    curl $CURL/node/ -F title="Docuverse IV"
+    #curl $CURL/node/ -F title="Docuverse I"
+    #curl $CURL/node/ -F title="Docuverse II"
+    #curl $CURL/node/ -F title="Docuverse III"
+    #curl $CURL/node/ -F title="Docuverse IV"
     #curl $CURL/node/ -F title="Docuverse V"
     #curl $CURL/node/ -F title="Docuverse VI"
 
-    curl $CURL/node/1 -F title="Docuverse I - I"
-    curl $CURL/node/1 -F title="Docuverse I - II"
-    curl $CURL/node/1 -F title="Docuverse I - III"
-    curl $CURL/node/1 -F title="Docuverse I - IV"
+    #curl $CURL/node/1 -F title="Docuverse I - I"
+    #curl $CURL/node/1 -F title="Docuverse I - II"
+    #curl $CURL/node/1 -F title="Docuverse I - III"
+    #curl $CURL/node/1 -F title="Docuverse I - IV"
 
-    #curl $CURL/node/1/ -F title="My first channel"
-    #curl $CURL/node/1/1 -F title="My 1.1 channel"
-    #curl $CURL/node/1/1 -F title="My 1.2 channel"
+    curl $CURL/node/ -X POST
+    curl $CURL/node/ -X POST
+    curl $CURL/node/ -X POST
+    curl $CURL/node/ -X POST
+    curl $CURL/node/ -X POST
+    curl $CURL/node/3 -X POST
+    curl $CURL/node/3 -X POST
+    curl $CURL/node/3.2 -X POST
+    curl $CURL/node/3.2 -X POST
+    curl $CURL/node/3.2.1 -X POST
+    curl $CURL/node/3.2.1 -X POST
+    curl $CURL/node/3.2.1 -X POST
+    curl $CURL/node/3.2.1 -X POST
+    curl $CURL/node/3.2.1.4 -X POST
+
+    curl $CURL/node/3.2.1.4/ -X POST
+    curl $CURL/node/3.2.1.4/ -X POST
+    curl $CURL/node/3.2.1.4/2 -X POST
+    curl $CURL/node/3.2.1.4/2 -X POST
+    curl $CURL/node/3.2.1.4/2 -X POST
+    curl $CURL/node/3.2.1.4/2 -X POST
+    curl $CURL/node/3.2.1.4/2.4 -X POST
+    curl $CURL/node/3.2.1.4/2.4 -X POST
+    curl $CURL/node/3.2.1.4/2.4.2/ -X POST
+    curl $CURL/node/3.2.1.4/2.4.2/ -X POST
+    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
+    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
+    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
+    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
+    curl $CURL/node/3.2.1.4/2.4.2/2.2.2 -X POST
     
     #curl $CURL/node/1/1 -F title="Another channel"
     #curl $CURL/node/1/1.1 -F title="Etc.."

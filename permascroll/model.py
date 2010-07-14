@@ -71,44 +71,61 @@ Main classes
 class Docuverse(db.Model):
     """
     Represented by the Ur-digit, the first digit of a tumbler address. 
+    Permascroll uses addresses with 3 components, ie. 3 tumbler digits
+    concatenated by '.0.'.
+
     There are as many Docuverses as there are Ur-digits, in normal operation
     just 1.
     """
     length = db.IntegerProperty()
     "Nr. of contained nodes. "
 
+    def __repr__(self):
+        return "[First Docuverse, %s positions]" % self.length
+
 class AbstractNode(db.Model):
     position = db.IntegerProperty(required=True)
     "Position on parent container (the last digit of the tumbler). "
 
     length = db.IntegerProperty(default=0)
-    "Nr. of contained nodes. "
+    "Nr. of positions below this tumbler. "
 
-    @property
-    def base(self):
-        return self.parent()
+    leafs = db.IntegerProperty(default=0)
+    "Nr. of addresses below this component. "
+
+    #@property
+    #def base(self):
+    #    return self.parent()
 
     @property
     def tumbler(self):
-        "The tumbler URI (key name) for this node. "
+        "The full tumbler URI (key name) for this node. "
         return self.key().name()
 
     title = db.StringProperty(required=False)
     "Unicode string, uniqueness only required for certain Node types. "
 
+    def __repr__(self):
+        return "[%s, with %i positions at %s, and %i sub-adresses]" % \
+    (self.title or "Untitled %s" % (self.kind()), 
+                self.length, self.tumbler, self.leafs)
+
 class Node(AbstractNode, db.Model):
     # parent = Docuverse
-    base = db.SelfReferenceProperty(required=False)
-    "Root Node's are based on a Docuverse, others on a Node. "
+    #base = db.SelfReferenceProperty(required=False)
+    #"Root Node's are based on a Docuverse, others on a Node. "
+    pass
 
 class Channel(AbstractNode, db.Model):
     # parent = Node
-    base = db.SelfReferenceProperty(required=False)
+    #base = db.SelfReferenceProperty(required=False)
+    pass
 
 class Entry(AbstractNode, db.Model):
     # parent = Channel
-    base = db.SelfReferenceProperty(required=False)
-    "Root entry's are based in a Channel, others have a parent Entry. "
+    #base = db.SelfReferenceProperty(required=False)
+    #"Root entry's are based in a Channel, others have a parent Entry. "
+    pass
 
     content = db.ListProperty(db.Key)
     "One or more keys for Content objects, implementing one or more v-streams.  "

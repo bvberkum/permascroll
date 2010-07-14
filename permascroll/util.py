@@ -35,6 +35,10 @@ class Tumbler:
                         "is not a string or list of integers"
             self.digits = map(long, digits)
 
+    def isroot(self):
+        return len(self) == 1
+    isroot = property(isroot)
+
     def __repr__(self):
         """Return a Python expression which will reconstruct this tumbler."""
         return self.__class__.__name__ + \
@@ -114,6 +118,18 @@ class Address(Tumbler):
         delim = len(self.digits) - 1
         while self.digits[delim] != 0: delim = delim - 1
         return Address(self.digits[:delim]), Address(self.digits[delim+1:])
+
+    def split_all(self):
+        "Split address into its tumbler components. "
+        tumblers = []
+        start = 0
+        for i in range(0,len(self)):
+            if self.digits[i] == 0:
+                tumblers.append(self.digits[start:i])
+                start = i+1
+        if start:                
+            tumblers.append(self.digits[start:])
+        return map(Tumbler, tumblers)
 
     def globalize(self, other):
         """Return an global address given a local address into this one, a
@@ -441,7 +457,6 @@ def cs_list(arg): # {{{
 
 def conv_tumbler(arg): # {{{
     t = Tumbler(arg)
-    logger.info([arg, t])
     return t
     # }}}
 
