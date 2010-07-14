@@ -402,7 +402,7 @@ endpoints = [
     (r'/node/', NodeHandler),
     (r'/node'+1*'/(%(tumbler)s)/?' % locals(), NodeHandler),
     (r'/node'+2*'/(%(tumbler)s)/?' % locals(), NodeHandler),
-    (r'/node'+3*'/(%(tumbler)s)/?' % locals(), NodeHandler),
+    (r'/node'+3*'/(%(tumbler)s)' % locals(), NodeHandler),
     #(r'/node/(%(tumbler)s)' % locals(), ReDir),
     #(r'/node/(%(tumbler)s)/(%(tumbler)s)' % locals(), ReDir),
     #(r'/node'+''.join(2*'/(%(tumbler)s)')+'/(%(tumbler)s)', ReDir),
@@ -411,7 +411,7 @@ endpoints = [
     (r'/node/(%(tumbler)s)/(%(tumbler)s%(offset)s)' % locals(), QueryHandler),
     (r'/node/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s%(offset)s)' % locals(), QueryHandler),
     # content and content-range
-    (r'/node/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s%(offset)s)' % locals(),
+    (r'/node/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s)/(%(tumbler)s%(offset)s)?' % locals(),
         ContentHandler),
 
     #('/feed', reDir('/feed/')),

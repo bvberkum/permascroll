@@ -4,45 +4,49 @@ init_nodes()
     #curl $CURL/node/ -F title="Docuverse I"
     #curl $CURL/node/ -F title="Docuverse II"
     #curl $CURL/node/ -F title="Docuverse III"
-    #curl $CURL/node/ -F title="Docuverse IV"
-    #curl $CURL/node/ -F title="Docuverse V"
-    #curl $CURL/node/ -F title="Docuverse VI"
 
     #curl $CURL/node/1 -F title="Docuverse I - I"
     #curl $CURL/node/1 -F title="Docuverse I - II"
     #curl $CURL/node/1 -F title="Docuverse I - III"
     #curl $CURL/node/1 -F title="Docuverse I - IV"
 
-    curl $CURL/node/ -X POST
-    curl $CURL/node/ -X POST
-    curl $CURL/node/ -X POST
-    curl $CURL/node/ -X POST
-    curl $CURL/node/ -X POST
-    curl $CURL/node/3 -X POST
-    curl $CURL/node/3 -X POST
-    curl $CURL/node/3.2 -X POST
-    curl $CURL/node/3.2 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1.4 -X POST
+    #curl $CURL/node/ -X POST
+    #curl $CURL/node/ -X POST
+    #curl $CURL/node/ -X POST
+    #curl $CURL/node/3 -X POST
+    #curl $CURL/node/3 -X POST
+    #curl $CURL/node/3.2 -X POST
+    #curl $CURL/node/3.2 -X POST
+    #curl $CURL/node/3.2.1 -X POST
+    #curl $CURL/node/3.2.1 -X POST
+    #curl $CURL/node/3.2.1 -X POST
+    #curl $CURL/node/3.2.1 -X POST
+    #curl $CURL/node/3.2.1.4 -X POST
 
-    curl $CURL/node/3.2.1.4/ -X POST
-    curl $CURL/node/3.2.1.4/ -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2.4 -X POST
-    curl $CURL/node/3.2.1.4/2.4 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/ -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/ -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2.2.2 -X POST
+    #curl $CURL/node/3.2.1.4/ -X POST
+    #curl $CURL/node/3.2.1.4/ -X POST
+    #curl $CURL/node/3.2.1.4/2 -X POST
+    #curl $CURL/node/3.2.1.4/2 -X POST
+    #curl $CURL/node/3.2.1.4/2 -X POST
+    #curl $CURL/node/3.2.1.4/2 -X POST
+    #curl $CURL/node/3.2.1.4/2.4 -X POST
+    #curl $CURL/node/3.2.1.4/2.4 -X POST
+    #curl $CURL/node/3.2.1.4/2.4.2/ -X POST
+    #curl $CURL/node/3.2.1.4/2.4.2/ -X POST
+    #curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
+    #curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2 -X POST
+
+    curl $CURL/node/3.2.1.4/2.4.2/2.2.2/ -F data="My test data! Keep it"
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2/1 -F data="Ah forgot something"
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2/1 -F data="Nah better make that forgot something"
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2/1.2 -F data="You know, this is interesting too. "
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2/ -F data="Oh well, more to do. "
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2/ -F data="And more.. "
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2/ -F data="Hey found something.. hmmm. "
+    #curl $CURL/node/3.2.1.4/2.4.2/2.2.2/4 -F data="Oh that was not so interesting, doe have a look at this shiny thing though.  "
     
     #curl $CURL/node/1/1 -F title="Another channel"
     #curl $CURL/node/1/1.1 -F title="Etc.."

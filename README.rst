@@ -35,18 +35,27 @@ the type of the entries. In turn, for specific container types it is possible to
 have different entry address, ie. parallel streams.
 This container is then grouped under a generic node.
 
-Which gives::
+Above description gives::
 
   <node> <directory> <entry> <virtual .. >
 
-Each address is stored as a node, having one super- and a number of sub-nodes.
+Each address is stored as a node, having one super- and a number of sub-nodes,
+and any number of leafs or sub-components.
 
+The 0-separator tumbler digit in Xu88.1 addresses is replaced by an '/' in the
+web-interface. Otherwise the Xu88.1 principles apply. Ie. 1~0.1 corresponds to
+all the positions under 1, while 1/1~0.1 corresponds to all the positions in
+1.0.1. 
+
+Any number of vstream types may be supported. Directory and Entry too may be
+special type.
 
 .. [*] Deleting content could be accomplished by blanking data on the virtual
        addresses (with the propert effect of serving blanks, storage could be truncated). 
        
        Also a host may ignore address ranges, ie. need not to store everything. 
        Distributed dereferencing of tumblers is left out of consideration here.
+
 
 Literal content
 ---------------

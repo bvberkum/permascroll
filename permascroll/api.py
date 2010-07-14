@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def get(*tumblers):
     """
-    Dereference tumbler and return Node, Channel, Entry 
+    Dereference tumbler and return Node, Directory, Entry 
     (depending on component count) or raise NotFound.
     """
     docuverse = get_root()
@@ -18,7 +18,7 @@ def get(*tumblers):
     else:
         kind = Node
         tcnt = len(tumblers)
-        if tcnt == 2: kind = Channel
+        if tcnt == 2: kind = Directory
         elif tcnt == 3: kind = Entry
         node = kind.get_by_key_name(
                 '.0.'.join(map(str, tumblers)))
@@ -62,7 +62,7 @@ def create_node(*tumblers, **props):
     assert base, tumblers
     subnode = \
         ((kind == 'node') and isinstance(base, Node)) or \
-        ((kind == 'channel') and isinstance(base, Channel)) or \
+        ((kind == 'channel') and isinstance(base, Directory)) or \
         ((kind == 'entry') and isinstance(base, Entry))
     if subnode:
         return _new_node(None, base, kind=kind, **props)
@@ -85,10 +85,10 @@ def _new_node(parent, base, kind=None, **props):
         new = Node(key_name=tumbler, position=pos, **props)
     elif kind == 'channel':
         assert isinstance(parent, Node) or \
-                isinstance(base, Channel), (parent, base)
-        new = Channel(key_name=tumbler, position=pos, **props)
+                isinstance(base, Directory), (parent, base)
+        new = Directory(key_name=tumbler, position=pos, **props)
     elif kind == 'entry':
-        assert isinstance(parent, Channel) or \
+        assert isinstance(parent, Directory) or \
                 isinstance(base, Entry), (parent, base)
         new = Entry(key_name=tumbler, position=pos, **props)
     else:

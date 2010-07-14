@@ -116,15 +116,15 @@ class Node(AbstractNode, db.Model):
     #"Root Node's are based on a Docuverse, others on a Node. "
     pass
 
-class Channel(AbstractNode, db.Model):
+class Directory(AbstractNode, db.Model):
     # parent = Node
     #base = db.SelfReferenceProperty(required=False)
     pass
 
 class Entry(AbstractNode, db.Model):
-    # parent = Channel
+    # parent = Directory
     #base = db.SelfReferenceProperty(required=False)
-    #"Root entry's are based in a Channel, others have a parent Entry. "
+    #"Root entry's are based in a Directory, others have a parent Entry. "
     pass
 
     content = db.ListProperty(db.Key)
@@ -188,7 +188,7 @@ class MIMEMessage(db.Model):
         return msg
 
 
-class Mailinglist(Channel):
+class Mailinglist(Directory):
 
     """
     List of MIMEMessages.
