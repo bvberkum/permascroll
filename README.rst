@@ -1,7 +1,7 @@
 Permascroll
 ===========
 :created: 2010-01-01
-:updated: 2010-07-11
+:updated: 2010-07-18
 
 
 For each publication there is a numbered channel or directory, with
@@ -19,12 +19,15 @@ Adressing is done on discrete characters.
 Encoding of math formulae and diagrams is not entirely clear.
 Beside literal data, other multimedia data could be adressed.
 
+
+Details
+-------
 Tumblers allow hierarchical structures. 
 
-The docuverse starts at 1, and remains 1.
+The docuverse starts at 1, and remains 1?
 There is no registry for (distributed) docuverses.
-
 1.1 is the first address in the docuverse. 
+
 To address each channel, entry, and virtual position, an address with multiple
 components is needed.
 
@@ -42,13 +45,9 @@ Above description gives::
 Each address is stored as a node, having one super- and a number of sub-nodes,
 and any number of leafs or sub-components.
 
-The 0-separator tumbler digit in Xu88.1 addresses is replaced by an '/' in the
-web-interface. Otherwise the Xu88.1 principles apply. Ie. 1~0.1 corresponds to
-all the positions under 1, while 1/1~0.1 corresponds to all the positions in
-1.0.1. 
-
+Xu88.1 span notation applies. Ie. 1~0.1 corresponds to range 1 to 1+1.
 Any number of vstream types may be supported. Directory and Entry too may be
-special type.
+special type?
 
 .. [*] Deleting content could be accomplished by blanking data on the virtual
        addresses (with the propert effect of serving blanks, storage could be truncated). 
@@ -56,10 +55,9 @@ special type.
        Also a host may ignore address ranges, ie. need not to store everything. 
        Distributed dereferencing of tumblers is left out of consideration here.
 
-
-Literal content
+Content
 ---------------
-Has a simple virtual address range: ``1~0.1``.
+Literal content has a simple virtual address range: ``1.0.1~0.1``.
 (0-prefixed tumblers denote offset for preceding address, Xu88.1 notation)
 
 Uses datastore for unicode entries.
@@ -85,7 +83,6 @@ shopping lists.
   .. trans:: 1~0.1
 
 
-
 HTTP API
 ---------
 
@@ -95,8 +92,6 @@ Node
    - length
    - label  
 
-ScrollNode
-    
 EntryNode
    - blob id
    - digests  
@@ -119,29 +114,7 @@ EntryNode
 - ``1.2.432`` some mailing list
 - ``1.2.432.0.1.0.1.543`` some character in some mailing list?
 - ``1.2.432.0.1`` first mailing list message
-- ``1.2.432.0.1.0.1.1`` first character in that message
+- ``1.2.432.0.1.0.1.0.1`` first character in that message
 
-::
-
-   <space>.0.<item>.0.<content>
-
-So the first component counts the permascrolls and the second the items, and
-the third the virtual positions. 
-Since the space is strucutured hierarchically using tumbers it may be
-ordered, but it could be difficult or unnecesary to construct virtual streams for the 
-upper spaces. 
-For example ``1.0.1~0.1`` addresses all virtual contents of the entire current space. 
-Perhaps usefull in queries, but we will seldom dereference all of that and stream it 
-to the client.
-
-
-I don't know if this hierarchical, ordered interpretation is present in Xanadu
-anywhere. Permascroll is, but I wonder what e.g. Xu88.1 can do for queries like
-that. (Also for example link endsets in sets of documents.)::
-
-  <node>.0.<account>.0.<document>.0.<vaddr>
-
-- ``feed`` all feeds
-- ``feed/4321/entry/5432`` database IDs for entry
 
 
