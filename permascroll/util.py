@@ -101,6 +101,11 @@ class Tumbler:
 class Address(Tumbler):
     """An address within the Udanax object space.  Immutable."""
 
+    def __init__(self, *args, **kwds):
+        if args and isinstance(args[0], Tumbler):
+            args = ['.0.'.join(map(str, args))]
+        Tumbler.__init__(self, *args, **kwds)
+
     def __add__(self, offset):
         """Add an offset to a tumbler."""
         if not istype(Offset, offset):
@@ -117,17 +122,31 @@ class Address(Tumbler):
         """For a global address, return the docid and local components."""
         delim = len(self.digits) - 1
         while self.digits[delim] != 0: delim = delim - 1
-        return Address(self.digits[:delim]), Address(self.digits[delim+1:])
+        return Address(self.digits[:delim]), \
+                Address(self.digits[delim+1:])
+
+    def parent(self):
+        """Return the address, excluding the lowest component. """
+        if 0 in self.digits:
+            return Address(*self.split_all()[:-1])
+
+    def subcomponent(self, component):
+        """Append component. """
+        if isinstance(component, Tumbler) or isinstance(component, str):
+            return Address(str(self) +'.0.'+ str(component))
+        else:
+            raise TypeError, "Need tumbler: %s" % type(component)
 
     def split_all(self):
-        "Split address into its tumbler components. "
+        "Split 0-separated address into its tumbler components. "
         tumblers = []
+        # add every component ended by a '.0.'
         start = 0
-        for i in range(0,len(self)):
+        for i in range(0, len(self)):
             if self.digits[i] == 0:
                 tumblers.append(self.digits[start:i])
                 start = i+1
-        if start:                
+        if start: # append last component
             tumblers.append(self.digits[start:])
         return map(Tumbler, tumblers)
 
@@ -460,19 +479,30 @@ def conv_tumbler(arg): # {{{
     return t
     # }}}
 
+def conv_address(arg): # {{{
+    #logger.info(arg)
+    arg = arg.strip('/').replace('/','.0.')
+    #logger.info(arg)
+    t = Address(arg)
+    return t
+    # }}}
+
 def conv_span(arg):
+    logger.info(arg)
     assert arg.count('~') == 1, arg
     tumblers = arg.split('~')
     assert tumblers[1].startswith('0'), tumblers[1]
-    start = Address(tumblers[0])
+    start = conv_address(tumblers[0])
     offset = Offset(tumblers[1])
-    return Span(start, offset)
+    s = Span(start, offset)
+    logger.info(s)
+    return s
 
 def conv_span_or_address(arg):
     if '~' in arg:
         return conv_span(arg)
     else:
-        return conv_tumbler(arg)
+        return conv_address(arg)
 
 def conv_blob(arg):
     pass # TODO
@@ -504,6 +534,7 @@ data_convertor = {
     #'isodate': conv_iso8801date,
     #'rfc822date': conv_rfc822date,
     'tumbler': conv_tumbler,
+    'address': conv_address,
     'span': conv_span,
     'span_or_address': conv_span_or_address,
     'cslist': cs_list,
@@ -563,6 +594,7 @@ def catch(method):
             data = method(self, *args, **kwds)
         except Exception, e:
             self.response.set_status(500)
+            self.response.out.write(type(self))
             self.response.out.write(repr(e))
             traceback.print_exc()
         if not data: data = ''
@@ -712,7 +744,7 @@ def web_auth(method): # {{{
     # }}}
 
 
-def make_id(string):
+def make_id(string): # {{{
     """
     Convert `string` into an identifier and return it.
 
@@ -805,4 +837,41 @@ _non_id_translate_digraphs = {
     0x0238: u'db',      # db digraph
     0x0239: u'qp',      # qp digraph
 }
+
+# }}}
+
+list_param_set = (
+        #('page', 'size', 'total') # XXX: relative
+        ('num:int', 'start:long'), # like GAE dev-server admin
+    )
+
+def _find_pattern(kwds):
+    for lp in list_param_set:
+        v = True
+        if lp[0] not in kwds:
+            continue
+        else:
+            for query_name in lp:
+                if query_name not in kwds:
+                    #logger.info('Query failed for pattern %s', lp)
+                    v = False
+            if v:
+                return lp
+
+def list_q(method):
+    "Do paging by parameters on list-queries, see model.api functions. "
+    def list_q_wrap(*args, **kwds):
+        p = _find_pattern(kwds)
+        if p:
+            cnt_, start = p
+            if cnt_ in kwds:
+                cnt = kwds.get(cnt,0)
+            if start_ in kwds:
+                start = kwds.get(start,0)
+        else: # some compat. mode
+            return method(*args, **kwds)
+        q = method(*args, **kwds)
+        return q.fetch(cnt, start)
+    return list_q_wrap
+    
 

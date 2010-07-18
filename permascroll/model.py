@@ -1,6 +1,6 @@
 """ 
-- Feeds and Entries in a Feed are counted.                    
-- Mailinglist subclasses abstract class Feed, every list counts as a feed.
+- Directorys and Entries in a Directory are counted.                    
+- Mailinglist subclasses abstract class Directory, every list counts as a feed.
 - MIMEMessage does not subclass non-abstract Entry, messages may appear in
   multiple lists, but for each an entry has to exist. 
 - Entries can exist for any kind of entity. The entry_id's scheme has to be
@@ -20,14 +20,10 @@ from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 
 
 """
-Counters are kept for items in each space
-, and by default 'sharded' into 20 separate entities.
-This is interesting when doing multiple inserts, since writing takes longer than 
-reading.
-However, each insert still needs the total count to be able to assign an index
-number.
+TODO: sharded counting of all Nodes, Directories, Entries and virtual
+streams/chars/bytes..
 
-See http://code.google.com/appengine/articles/sharding_counters.html.    
+See also http://code.google.com/appengine/articles/sharding_counters.html.    
 """
 
 class CounterShardConfig(db.Model):
@@ -125,11 +121,35 @@ class Entry(AbstractNode, db.Model):
     # parent = Directory
     #base = db.SelfReferenceProperty(required=False)
     #"Root entry's are based in a Directory, others have a parent Entry. "
-    pass
 
     content = db.ListProperty(db.Key)
     "One or more keys for Content objects, implementing one or more v-streams.  "
+    # The tumbler format of the vstream is determined by the content-type
+
+    def __repr__(self):
+        return "[%s, with %i positions at %s, and %i sub-adresses]" % \
+    (self.title or "Untitled %s" % (self.kind()), 
+                self.length, self.tumbler, self.leafs)
+
+    leafs = 3 # XXX: Entry recognizes 3 v-types
+
+#class Virtual(AbstractNode, db.Model):
+#    content = db.ListProperty(db.Key)
+#    "One or more keys for Content objects, implementing one or more v-streams.  "
    
+class Content:
+    """
+    virtual-position:
+
+        1. literal
+        2. link
+        3. image
+    """
+    def get_content(clss, key):
+        # TODO: registry for key schemes
+        if key == 'blob': pass
+        elif key == 'email': pass
+        elif key == 'literal': pass
 
 
 class LiteralContent(db.Model):
@@ -149,7 +169,8 @@ class LiteralVStream(object):
         self.adaptee = content
     # vstream = adaptee.data[0:adaptee.length]
 
-
+def Literal_vstream_for_address(): pass
+def Literal_vstream_for_object(): pass
 
 
 

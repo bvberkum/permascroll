@@ -1,7 +1,9 @@
 
 class DuplicateNode(Exception):
-	pass
+    pass
 
 class NotFound(Exception):
-	pass
+    pass
 
+class InvalidVType(Exception):
+    pass
