@@ -103,6 +103,7 @@ def _new_node(parent, base, kind=None, **props):
         parent.put()
     else:        
         base.put()
+    increment(kind)            
     new.put()
     return new
 
@@ -150,36 +151,72 @@ def append(addr, data=None, title=None, **props):
 
     1. literal
     2. link
-    3. image
+
+    TODO:
+        3. image 
+        4. audio
+        5. video
     """
-    logger.info(addr)
-    addr, v_type = addr.split()
-    logger.info([addr, v_type])
-    node = get(addr)
-    assert node.kind() in ('Entry', 'Directory')
+    entry_addr, vaddr = addr.split()
+    base = get(entry_addr)
+    assert base.kind() in ('Entry', 'Directory')
+    length = len(data)
+    if length > 1024**3:
+        raise "XXX: Largish data..? %s" % length
+    increment('virtual', length)
     #assert isinstance(node, Entry) or isinstance(node, Channel), node
     v = None
-    if v_type[0] == 1:
+    if vaddr[0] == 1:
         v = LiteralContent(data=data, **props)        
         v.length = len(v.data)
-    elif v_type[0] == 2:
+    elif vaddr[0] == 2:
         v = EDL(data=data, **props)
-    elif v_type[0] == 3:
+    elif vaddr[0] == 3:
         v = Image(data=data, **props)
     else:
-        raise InvalidVType, v_type[0]
+        raise InvalidVType, vaddr[0]
     # content = 'blob:hash-of-image', 'literal:hash-of-literal', 
     #           'edl:hash-of-edl'
     v.put()
-    n = create(addr, kind='entry', title=title)
+    if base.kind() == 'Entry':
+        n = _new_node(None, base, kind='entry', title=title)
+    else:    
+        n = _new_node(base, None, kind='entry', title=title)
     n.content = [v.key()]
     n.put()
     return n
 
 def deref(span):
     "Return data for Entry nodes at address range. "
-    pass
+    assert span.start.split_all() == 4, "Need complete address, including virtual part. "
+    entry_addr, vaddr = span.start.split()
+
+    # res_key = ...
+
+    # Instantiate a BlobReader for a given Blobstore value.
+    blob_reader = blobstore.BlobReader(res_key)
+
+    # Instantiate a BlobReader for a given Blobstore value, setting the
+    # buffer size to 1 MB.
+    blob_reader = blobstore.BlobReader(res_key, buffer_size=1048576)
+
+    # Instantiate a BlobReader for a given Blobstore value, setting the
+    # initial read position.
+    blob_reader = blobstore.BlobReader(res_key, position=4194304)
+ 
+    # TODO
+
+    # Read the entire value into memory.  This may take a while depending
+    # on the size of the value and the size of the read buffer, and is not
+    # recommended for large values.
+    #value = blob_reader.read()
+
+    # Set the read position, then read 100 bytes.
+    #blob_reader.seek(2097152)
+    #data = blob_reader.read(100)
 
 def blank(span):
     "Erase data at span (retains blank space for the range of previous width). "
     pass
+
+

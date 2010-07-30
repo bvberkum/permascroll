@@ -6,13 +6,29 @@ import string
 import unicodedata
 import urllib # }}}
 # Third party {{{
-from google.appengine.api import users # }}}
+from google.appengine.api import users 
+from zope.interface import adapter, interface, providedBy # }}}
 # Local {{{
 #from permascroll.registry import components
 from permascroll.exception import * # }}}
 
 
 logger = logging.getLogger(__name__)
+
+class Link(unicode): # {{{
+    "See google.appengine.api.datastore_types.Link. "
+    def __init__(self, link):
+        super(Link, self).__init__(self, link)
+        ValidateString(link, 'link', max_len=_MAX_LINK_PROPERTY_LENGTH)
+
+        scheme, domain, path, params, query, fragment = urlparse.urlparse(link)
+        if (not scheme or (scheme != 'file' and not domain) or
+                          (scheme == 'file' and not path)):
+          raise datastore_errors.BadValueError('Invalid URL: %s' % link)
+
+    def ToXml(self):
+        return u'<link href=%s />' % saxutils.quoteattr(self)
+    # }}}
 
 # Tumbler, Address and Offset as in x88 {{{
 class Tumbler: 
@@ -570,6 +586,36 @@ def merge(d, **kwds):
     d.update(kwds)
     return d
 
+# Components
+
+class IModel(interface.Interface): pass
+
+class INode(IModel): pass
+class IDirectory(IModel): pass
+class IEntry(IModel): pass
+class IVirtual(IModel): pass
+
+#class ILiteralContent(IVirtual): pass
+#class IEDL(IVirtual): pass
+
+class IOutput(interface.Interface): pass
+
+components = adapter.AdapterRegistry()
+
+class NodeXMLOutputAdapter(object):
+    def __init__(self, adaptee):
+        self.model = adaptee
+    def serialize(self):
+        pass
+    #def __call__(self, adapter):
+
+components.register([INode], IOutput, 'xml', NodeXMLOutputAdapter)
+components.register([IDirectory], IOutput, 'xml', NodeXMLOutputAdapter)
+components.register([IEntry], IOutput, 'xml', NodeXMLOutputAdapter)
+
+
+# Req. handler method decorators
+
 def mime(method):
     mediatype = 'text/plain'
     #global mediatypes
@@ -600,6 +646,15 @@ def catch(method):
         if not data: data = ''
         return str(data)
     return mime(error_resp_handler)
+
+def conneg(method):
+    def conneg_wrap(self, *args, **kwds):
+        media = method(self, *args, **kwds)
+        adapters = components.lookupAll(providedBy(media), IOutput)
+        logger.info(adapters)
+        #components.queryAdapter(media, )
+        return media
+    return catch(conneg_wrap)
 
 def error2(method):
     " Catch basic errors and finish HTTP response.  "

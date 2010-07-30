@@ -14,8 +14,11 @@
 """
 import random
 from cgi import parse_qs
+import zope.interface
+from zope.interface import implements
+from permascroll.util import INode, IDirectory, IEntry
 from google.appengine.ext import db
-from google.appengine.api import memcache
+#from google.appengine.api import memcache
 from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 
 
@@ -40,7 +43,7 @@ def get_count(name):
         total += counter.partial_count
     return total
 
-def increment(name):
+def increment(name, amount=1):
     config = CounterShardConfig.get_or_insert(name, name=name)
     def txn():
         shard = random.randint(0, config.num_shards-1)
@@ -48,10 +51,10 @@ def increment(name):
         counter = CounterShard.get_by_key_name(shard_name)
         if counter is None:
             counter = CounterShard(key_name=shard_name, name=name)
-        counter.partial_count += 1
+        counter.partial_count += amount
         counter.put()
         return counter.partial_count
-    count = db.run_in_transaction(txn)
+    partcount = db.run_in_transaction(txn)
     #memcache.incr(name)
 
 
@@ -110,17 +113,18 @@ class Node(AbstractNode, db.Model):
     # parent = Docuverse
     #base = db.SelfReferenceProperty(required=False)
     #"Root Node's are based on a Docuverse, others on a Node. "
-    pass
+    implements(INode)
 
 class Directory(AbstractNode, db.Model):
     # parent = Node
     #base = db.SelfReferenceProperty(required=False)
-    pass
+    implements(IDirectory)
 
 class Entry(AbstractNode, db.Model):
     # parent = Directory
     #base = db.SelfReferenceProperty(required=False)
     #"Root entry's are based in a Directory, others have a parent Entry. "
+    implements(IEntry)
 
     content = db.ListProperty(db.Key)
     "One or more keys for Content objects, implementing one or more v-streams.  "
@@ -131,26 +135,11 @@ class Entry(AbstractNode, db.Model):
     (self.title or "Untitled %s" % (self.kind()), 
                 self.length, self.tumbler, self.leafs)
 
-    leafs = 3 # XXX: Entry recognizes 3 v-types
+    #leafs = 3 # XXX: Entry recognizes 3 v-types
 
 #class Virtual(AbstractNode, db.Model):
 #    content = db.ListProperty(db.Key)
 #    "One or more keys for Content objects, implementing one or more v-streams.  "
-   
-class Content:
-    """
-    virtual-position:
-
-        1. literal
-        2. link
-        3. image
-    """
-    def get_content(clss, key):
-        # TODO: registry for key schemes
-        if key == 'blob': pass
-        elif key == 'email': pass
-        elif key == 'literal': pass
-
 
 class LiteralContent(db.Model):
     data = db.StringProperty()
@@ -172,6 +161,10 @@ class LiteralVStream(object):
 def Literal_vstream_for_address(): pass
 def Literal_vstream_for_object(): pass
 
+
+class EDL(db.Model):
+    data = db.ListProperty(db.Link)
+    # XXX: size/length?    
 
 
 class Unused:

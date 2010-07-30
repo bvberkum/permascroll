@@ -31,4 +31,5 @@ handlers:
 - url: /.*
   script: permascroll/server_handler.py
 
-
+skip_files:
+- ^lib/.*$

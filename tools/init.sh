@@ -5,38 +5,42 @@ init_nodes()
     # starting at a zero-width 'root' for each component. 
 
     # Create first nodes for components for Node, Directory, Entry
-    curl $CURL/node/ -X POST #-F title="Docuverse I"
-    curl $CURL/node/1/ -X POST
-    curl $CURL/node/1/1/ -X POST
+    #curl $CURL/node/ -X POST -F title="Docuverse I"
+    #curl $CURL/node/1 -X POST -F none=""
+    #curl $CURL/node/1.1/ -X POST -F none=""
+    #curl $CURL/node/1.1/ -X POST -H "Content-Length: 0"
+    curl $CURL/node/1.1/1/ -X POST -F none=""
+    curl $CURL/node/1.1/1/ -X POST -F none="" 
+
     # dnde - 'dandy' tree layout?
 
-    curl $CURL/node/ -X POST
-    curl $CURL/node/ -X POST
-    curl $CURL/node/ -X POST
-    curl $CURL/node/3 -X POST
-    curl $CURL/node/3 -X POST
-    curl $CURL/node/3.2 -X POST
-    curl $CURL/node/3.2 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1 -X POST
-    curl $CURL/node/3.2.1.4 -X POST
+    curl $CURL/node/ -X POST -F none="" 
+    curl $CURL/node/ -X POST -F none="" 
+    curl $CURL/node/ -X POST -F none="" 
+    curl $CURL/node/3 -X POST -F none="" 
+    curl $CURL/node/3 -X POST -F none="" 
+    curl $CURL/node/3.2 -X POST -F none="" 
+    curl $CURL/node/3.2 -X POST -F none="" 
+    curl $CURL/node/3.2.1 -X POST -F none="" 
+    curl $CURL/node/3.2.1 -X POST -F none="" 
+    curl $CURL/node/3.2.1 -X POST -F none="" 
+    curl $CURL/node/3.2.1 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4 -X POST -F none="" 
 
-    curl $CURL/node/3.2.1.4/ -X POST
-    curl $CURL/node/3.2.1.4/ -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2 -X POST
-    curl $CURL/node/3.2.1.4/2.4 -X POST
-    curl $CURL/node/3.2.1.4/2.4 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/ -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/ -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
-    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST
+    curl $CURL/node/3.2.1.4/ -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/ -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4.2/ -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4.2/ -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4.2/2 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST -F none="" 
+    curl $CURL/node/3.2.1.4/2.4.2/2.2 -X POST -F none="" 
 
     # Note: the last component below, 1 does not represent a node instance but
     # rather a more abstract 'virtual type'. After appending data 
@@ -87,6 +91,7 @@ init_nodes()
     #curl $CURL/node/2.2 -F title="Channel II - II - II"
     #curl $CURL/node/2.2 -F title="Channel II - II - III"
 }
-CURL_=" -L http://localhost:8083"
+CURL_=" -L http://permascroll.appspot.com"
+#CURL_=" -L http://localhost:8083"
 CURL=" --fail -o /dev/null "$CURL_
 init_nodes

@@ -1,7 +1,7 @@
 Permascroll
 ===========
 :created: 2010-01-01
-:updated: 2010-07-18
+:updated: 2010-07-19
 
 
 For each publication there is a numbered channel or directory, with
@@ -46,8 +46,10 @@ Each address is stored as a node, having one super- and a number of sub-nodes,
 and any number of leafs or sub-components.
 
 Xu88.1 span notation applies. Ie. 1~0.1 corresponds to range 1 to 1+1.
-Any number of vstream types may be supported. Directory and Entry too may be
-special type?
+(0-prefixed tumblers denote offset for preceding address, Xu88.1 notation)
+
+Any number of virtual component types may be supported, by specific 
+Directory and Entry types?
 
 .. [*] Deleting content could be accomplished by blanking data on the virtual
        addresses (with the propert effect of serving blanks, storage could be truncated). 
@@ -55,18 +57,29 @@ special type?
        Also a host may ignore address ranges, ie. need not to store everything. 
        Distributed dereferencing of tumblers is left out of consideration here.
 
-Content
+Virtual streams
 ---------------
 Literal content has a simple virtual address range: ``1.0.1~0.1``.
-(0-prefixed tumblers denote offset for preceding address, Xu88.1 notation)
+
+Links shall need to be kept, space 2. Links have no size.
+Images need an 2D address beneath 3. ``3.0.x-pixels.0.y-pixels``..
 
 Uses datastore for unicode entries.
 Uses blobstore for large unicode, and image entries.
 
+At each moment, a v-stream has a total width, or length, which is the result of
+its total occumulated content. Thus **an entry has one or more lengths**, one for each
+of its content streams (3, hardcoded?).
+
+Since in permascroll an entry cannot change, its length and thus its address
+space is fixed. 
+(Entry's may always be inserted in a Channel, though this operation is not
+entirly clear yet and the normal mode would be to append entries to an channel)
+
 Sources
 -------
 Mailinglists
-	Entries have text only but often in either some quotable plain text standard or HTML. 
+	Entries have text only but often in either some quotable plain text standard or HTML. Prime example of quotation in daily usage.
 	Sometimes binaries may be present. 
 	Not all lists may be available in an indexed form? 
 Blogs and other sites with articles

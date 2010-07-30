@@ -7,7 +7,9 @@ from cgi import parse_qs
 import logging
 
 from google.appengine.ext import webapp
+from google.appengine.ext import blobstore
 from google.appengine.ext.webapp import template
+from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 from permascroll import rc, model, util, api
@@ -93,7 +95,7 @@ class TumblerTestHandler(webapp.RequestHandler):
 
 class NodeHandler(AbstractHandler):
 
-    @util.catch
+    @util.conneg
     @util.http_q(':address')
     def get(self, t_addr):
         "Get the Node at address node(/channel(/entry)). "
@@ -156,15 +158,16 @@ class ContentHandler(AbstractHandler):
 
     @util.catch
     @util.http_q(':address','data:blob','type:str')
-    def post(self, address, type=None, **props):
+    def post(self, address, type=None, data=None):
         "Append content under address `tumbler`. "
         if not type: type='literal'
-        assert type == 'literal', type
-        if type == 'literal':
-            address = address.subcomponent('1')
-        logging.info(address)
-        #assert not mime or mime == 'text/plain'
-        return api.append(address, **props)
+        ccnt = len(address.split_all())
+        assert 3 <= ccnt <= 4, address
+        if ccnt == 3:
+            address = address.subcomponent(
+                    {'literal':'1','link':'2','image':'3'}[type])
+        assert data, (self.request.uri, data)
+        return api.append(address, data=data)
 
     #@util.catch
     #@util.http_q(':tumbler',':tumbler',':tumbler',':span',
@@ -175,6 +178,35 @@ class ContentHandler(AbstractHandler):
 
     # def delete(self, ):
     #   """Blank data at address or range. """
+    # XXX: but does not delete resource so not compatible with HTTP
+
+
+class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
+    """
+    Like ContentHandler, but push content to Google's blobstore.
+    Accepts literals, images and audio.
+    """
+
+    @util.catch
+    @util.http_q(':address')
+    def post(self, address):
+        "Accepts multipart/form-data"
+        upload_files = self.get_uploads('file')  # 'file' is file upload field in the form
+        blob_info = upload_files[0]
+        res_key = blob_info.key()
+        #self.redirect('/%s' % blob_info.key())
+
+
+class DownloadHandler(blobstore_handlers.BlobstoreDownloadHandler):
+    """
+    """
+    @util.catch
+    @util.http_q(':address')
+    def get(self, address):
+        res_key = api.resource_key(address)
+        blob_info = blobstore.BlobInfo.get(res_key)
+        self.send_blob(blob_info)
+
 
 class FrontPage(AbstractHandler):
 
@@ -188,12 +220,27 @@ class FrontPage(AbstractHandler):
         self.print_tpl(
                 content_id='frontpage',
                 title='Transfinite frantic space',
-                doc_body='<p class="first">Welcome, the permanent scroll is %i virtual '
-                'positions and growing.  '
-                '</p><p>Positions are accumulated from %i distinct items within %i subspaces. '
-                'Among the items, %i are actual unique records.  '
+                doc_body=''
+#                '<h1 class="title">Transfinite frantic space</h1> '
+                '<h1>Welcome to node <kbd>1.1</kbd>, </h1> '
+                '<p class="first">'
+                'this permascroll is %i virtual positions and growing. </p> '
+                '<ul>'
+                '<li><a href="/node/1.1/1">Visit first directory.</a></li>'
+                '<li><a href="/node/1.1/1/2">Show linktypes defined for this docuverse.</a></li>'
+                '</ul>'
+                '<p>Positions are accumulated from %i distinct entries '
+                'within %i directories. '
+#                'Among the entries, %i are actual unique records.  '
+                'Entries contain at most 2 distinct, '
+                '<strong>append-only</strong> virtual data streams; one for text and one for links. '
+#                'Data is stored by Google blobstore. '
                 'There is neither <em>transclusion</em> nor <em>parallel markup</em>&mdash;'
-                'All Your Bytestreams Are Belong To <del>XUL</del><ins>HTML</ins>.  </p>'
+                'All Your Bytestreams Are Belong To <del>XUL</del><ins>HTML</ins>.  '
+                '</p>' % (
+                    model.get_count('virtual'), model.get_count('entry'),
+                    model.get_count('channel'),
+                    ),
 #                ' <form id="_home_nav" method="GET"> '
 #                ' <input type="hidden" id="feed-URI" value="/feed/%s" /> '
 #                ' <input type="hidden" id="find-entity" value="/?id=%s" /> '
@@ -276,6 +323,14 @@ endpoints = [
     (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s?'
       '(?:%(tumbler)s%(sep)s%(tumbler)s)?(?:%(offset)s)?)' % d, 
         ContentHandler),
+    # TODO:
+    #(r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
+    #  '(?:%(tumbler)s%(sep)s)?)upload' % d, 
+    #    UploadHandler),
+    #(r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
+    #  '%(tumbler)s%(sep)s)download' % d, 
+    #    DownloadHandler),
+
     (r'/.test/(%(tumbler)s%(sep)s%(tumbler)s%(offset)s)' % d, 
         TumblerTestHandler),
 
@@ -292,9 +347,9 @@ endpoints = [
 application = webapp.WSGIApplication( endpoints,
                                      debug=True)
 
-
 # Main entry point
 def main():
+    logger.info("Library path: %s", rc.LIB)
     run_wsgi_app(application)
 
 if __name__ == "__main__":

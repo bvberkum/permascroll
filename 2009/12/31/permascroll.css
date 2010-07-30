@@ -43,7 +43,8 @@ body > .page
 }
 .document h1 {
 /*	border: 1px solid orange;*/
-	margin-top: 2em;
+	margin-top: 2.5em;
+	margin-bottom: .5em;
 }
 .document h2 {
 	margin-top: 1em;
@@ -86,4 +87,13 @@ body > .page
 	margin-top: 0;
 	padding: 0 1em 1em 1em;
 }
-
+.document ul
+{
+    padding: .5em;
+    padding-left: 1.5em;
+}
+.document p,
+.document ul
+{
+/*    border: 1px solid red; */
+}
