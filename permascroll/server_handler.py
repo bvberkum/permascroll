@@ -60,7 +60,8 @@ class AbstractHandler(webapp.RequestHandler):
                 rc.TEMPLATES[tpl], data)
         self.response.out.write(output)
 
-        etag = uuid.uuid4()
+        etag = str(uuid.uuid4())
+        #model.insert_cache(etag, output)
         #model.page_cache[etag] = output
         return etag
 
@@ -86,12 +87,6 @@ class AbstractHandler(webapp.RequestHandler):
 
         self.response.out.write(template.render(
             rc.TEMPLATES['http-error'], data))
-
-    def is_cached(self, etag):
-        return etag in model.page_cache
-
-    def invalidate_cache(self, etag):
-        del model.page[cache]
 
 
 # Concrete handlers
@@ -231,7 +226,7 @@ class FrontPage(AbstractHandler):
     def get(self):
         #status = model.get_status()
         #if status.count_updated:
-        #    self.invalidate_cache('frontpage')
+        #    model.invalidate_cache(...)
         #client_etag = None
         #if 'etag' in self.request.headers:
         #    client_etag = self.request.headers['etag']

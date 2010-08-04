@@ -18,14 +18,19 @@ import zope.interface
 from zope.interface import implements
 from permascroll.util import INode, IDirectory, IEntry, PickleProperty
 from google.appengine.ext import db
-#from google.appengine.api import memcache
+from google.appengine.api import memcache
 from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 
 
 
-def is_cached(etag): pass
-def invalidate_cache(etag): pass
-def insert_cache(etag, data): pass
+def is_cached(etag):
+    return memcache.get(etag) != None
+
+def invalidate_cache(etag):
+    memcache.delete(etag)
+
+def insert_cache(etag, data):
+    memcache.add(etag, data)
 
 
 class Status(db.Model):
