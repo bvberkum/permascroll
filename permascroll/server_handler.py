@@ -2,6 +2,7 @@
 Server handler, handlers for URL endpoints.
 Together with Form handler contains main HTTP serving routines.
 """
+import uuid
 import wsgiref
 from cgi import parse_qs
 import logging
@@ -55,8 +56,13 @@ class AbstractHandler(webapp.RequestHandler):
             tpl = data['template']
             del data['template']
 
-        self.response.out.write(template.render(
-                rc.TEMPLATES[tpl], data))
+        output = template.render(
+                rc.TEMPLATES[tpl], data)
+        self.response.out.write(output)
+
+        etag = uuid.uuid4()
+        #model.page_cache[etag] = output
+        return etag
 
     def print_form(self, fields=[], form={}, **kwds):
         "Helper function for outputting a form"
@@ -80,6 +86,12 @@ class AbstractHandler(webapp.RequestHandler):
 
         self.response.out.write(template.render(
             rc.TEMPLATES['http-error'], data))
+
+    def is_cached(self, etag):
+        return etag in model.page_cache
+
+    def invalidate_cache(self, etag):
+        del model.page[cache]
 
 
 # Concrete handlers
@@ -217,40 +229,54 @@ class FrontPage(AbstractHandler):
         return
 
     def get(self):
-        self.print_tpl(
-                content_id='frontpage',
-                title='Transfinite frantic space',
-                doc_body=''
-#                '<h1 class="title">Transfinite frantic space</h1> '
-                '<h1>Welcome to node <kbd>1.1</kbd>, </h1> '
-                '<p class="first">'
-                'this permascroll is %i virtual positions and growing. </p> '
-                '<ul>'
-                '<li><a href="/node/1.1/1">Visit first directory.</a></li>'
-                '<li><a href="/node/1.1/1/2">Show linktypes defined for this docuverse.</a></li>'
-                '</ul>'
-                '<p>Positions are accumulated from %i distinct entries '
-                'within %i directories. '
-#                'Among the entries, %i are actual unique records.  '
-                'Entries contain at most 2 distinct, '
-                '<strong>append-only</strong> virtual data streams; one for text and one for links. '
-#                'Data is stored by Google blobstore. '
-                'There is neither <em>transclusion</em> nor <em>parallel markup</em>&mdash;'
-                'All Your Bytestreams Are Belong To <del>XUL</del><ins>HTML</ins>.  '
-                '</p>' % (
-                    model.get_count('virtual'), model.get_count('entry'),
-                    model.get_count('channel'),
-                    ),
-#                ' <form id="_home_nav" method="GET"> '
-#                ' <input type="hidden" id="feed-URI" value="/feed/%s" /> '
-#                ' <input type="hidden" id="find-entity" value="/?id=%s" /> '
-#                '<p>Visit your <a href="/user" title="User page">homepage</a> to list your subspace, '
-#                'or enter a <input id="feed-number" size="11" value="feed number" type="text" /> (with or without entry number) '
-#                'or an <input id="entity-ID" size="9" maxlength="500" value="entity ID" type="text" /> to '
-#                '<input type="submit" value="get" /> the corresponding page.  '
-#                '</p>'
-#                ' </form> ',
-                header='<p class="crumbs">Permascroll &raquo; Frontpage </p>',footer='' )
+        #status = model.get_status()
+        #if status.count_updated:
+        #    self.invalidate_cache('frontpage')
+        #client_etag = None
+        #if 'etag' in self.request.headers:
+        #    client_etag = self.request.headers['etag']
+        #if self.is_cached(client_etag):
+        #    self.response.set_status(304)
+        #    #self.print_cached(client_etag):
+        #    #self.response.headers['ETag'] = client_etag
+        #else:
+        etag = self.print_tpl(
+                    content_id='frontpage',
+                    title='Transfinite frantic space',
+                    doc_body=''
+    #                '<h1 class="title">Transfinite frantic space</h1> '
+                    '<h1>Welcome to node <kbd>1.1</kbd>, </h1> '
+                    '<p class="first">'
+                    'this permascroll is %i virtual positions and growing. </p> '
+                    '<ul>'
+                    '<li><a href="/node/1.1/1">Visit first directory.</a></li>'
+                    '<li><a href="/node/1.1/1/2">Show linktypes defined for this docuverse.</a></li>'
+                    '</ul>'
+                    '<p>Positions are accumulated from %i distinct entries '
+                    'within %i directories. '
+    #                'Among the entries, %i are actual unique records.  '
+                    'Entries contain at most 2 distinct, '
+                    '<strong>append-only</strong> virtual data streams; one for text and one for links. '
+    #                'Data is stored by Google blobstore. '
+                    'There is neither <em>transclusion</em> nor <em>parallel markup</em>&mdash;'
+                    'All Your Bytestreams Are Belong To <del>XUL</del><ins>HTML</ins>.  '
+                    '</p>' % (
+                        model.get_count('virtual'), model.get_count('entry'),
+                        model.get_count('channel'),
+                        ),
+    #                ' <form id="_home_nav" method="GET"> '
+    #                ' <input type="hidden" id="feed-URI" value="/feed/%s" /> '
+    #                ' <input type="hidden" id="find-entity" value="/?id=%s" /> '
+    #                '<p>Visit your <a href="/user" title="User page">homepage</a> to list your subspace, '
+    #                'or enter a <input id="feed-number" size="11" value="feed number" type="text" /> (with or without entry number) '
+    #                'or an <input id="entity-ID" size="9" maxlength="500" value="entity ID" type="text" /> to '
+    #                '<input type="submit" value="get" /> the corresponding page.  '
+    #                '</p>'
+    #                ' </form> ',
+                    header='<p class="crumbs">Permascroll &raquo; Frontpage </p>',footer='' )
+        #    self.response.headers['ETag'] = etag
+        
+
 
 
 class FeedBrowser(AbstractHandler):

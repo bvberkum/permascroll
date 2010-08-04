@@ -16,11 +16,30 @@ import random
 from cgi import parse_qs
 import zope.interface
 from zope.interface import implements
-from permascroll.util import INode, IDirectory, IEntry
+from permascroll.util import INode, IDirectory, IEntry, PickleProperty
 from google.appengine.ext import db
 #from google.appengine.api import memcache
 from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 
+
+
+def is_cached(etag): pass
+def invalidate_cache(etag): pass
+def insert_cache(etag, data): pass
+
+
+class Status(db.Model):
+    counts = PickleProperty()
+    count_updated = db.ListProperty(str)
+        
+def get_status(name='default'):
+    status = Status.get_by_key_name(name)
+    if not status:
+        #COUNTERS = ['node','directory','entry','virtual']
+        COUNTERS = ['node','channel','entry','virtual']
+        status = Status(counts=dict([(n,0) for n in COUNTERS]),updated=COUNTERS)
+        status.put()
+    return status
 
 """
 TODO: sharded counting of all Nodes, Directories, Entries and virtual
@@ -38,10 +57,15 @@ class CounterShard(db.Model):
     partial_count = db.IntegerProperty(required=True, default=0)
 
 def get_count(name):
-    total = 0
-    for counter in CounterShard.all().filter('name = ', name):
-        total += counter.partial_count
-    return total
+    status = get_status()
+    if name in status.count_updated:
+        total = 0
+        for counter in CounterShard.all().filter('name = ', name):
+            total += counter.partial_count
+        status.count_updated -= [name]
+        status.counts[name] = total
+        status.put()
+    return status.counts[name]
 
 def increment(name, amount=1):
     config = CounterShardConfig.get_or_insert(name, name=name)
@@ -53,6 +77,10 @@ def increment(name, amount=1):
             counter = CounterShard(key_name=shard_name, name=name)
         counter.partial_count += amount
         counter.put()
+        status = get_status()
+        if not name in status.count_updated:
+            status.count_updated += [name]
+            status.put()
         return counter.partial_count
     partcount = db.run_in_transaction(txn)
     #memcache.incr(name)
