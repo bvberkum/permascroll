@@ -1,8 +1,15 @@
+"""
+This is the data or storage API, see server_handler for HTTP service endpoints.
+"""
+
 import logging
 from permascroll import rc
 from permascroll.util import list_q
 from permascroll.model import *
 from permascroll.exception import *
+
+
+from xu88 import Tumbler, Address, Offset
 
 
 logger = logging.getLogger(__name__)
@@ -66,7 +73,7 @@ def create(addr, kind='node', **props):
         ((kind == 'node') and isinstance(base, Node)) or \
         ((kind == 'channel') and isinstance(base, Directory)) or \
         ((kind == 'entry') and isinstance(base, Entry))
-    logger.info(['create', addr, subnode, kind])        
+    logger.info(['create', addr, subnode, kind])
     if subnode:
         return _new_node(None, base, kind=kind, **props)
     else:
@@ -78,10 +85,12 @@ def _new_node(parent, base, kind=None, **props):
     virtual part). 
     """
     if parent:
+        # attach new node at new sub-component address
         parent.leafs += 1
         tumbler = "%s.0.%s" % (parent.tumbler, parent.leafs)
         pos = parent.leafs
     else:
+        # attach new node at new sub-address of current component
         base.length += 1
         tumbler = "%s.%s" % (base.tumbler, base.length)
         pos = base.length
@@ -103,7 +112,7 @@ def _new_node(parent, base, kind=None, **props):
         parent.put()
     else:        
         base.put()
-    increment(kind)            
+    #increment(kind)            
     new.put()
     return new
 
@@ -129,23 +138,80 @@ def update_node(node, **props):
 
 @list_q # filter various offset/length paging parameters
 def list_nodes(span):
-    "List nodes at address range. "
-    assert len(span.width) == 2
+    """
+    List nodes at address range. 
+    As with FEBE, this includes the start address up to but not including the end address.
+    """
+    #assert len(span.width) == 2 relevant for fixed-level address such as virtual part
+
+    #return [span.start, span.width, span.end()]
+
     nodes = []
-    ts = []
-    # Handle query: dereference node for each position in span
-    # retrieves positions for one specific tumbler digit position or 'address level'
-    logger.info([span.start.digits[-1], span.width[1]+1])
-    for x in xrange(span.start[-1], span.width[1]+1):
-        t = span.start
-        t.digits[-1] = x
-        logger.info(x)
-        #ts.append(t.copy)
-        nodes.append(get(t))
-    # TODO: return query        
+    end = span.end()
+    startnode = get(span.start)
+    nodes.append(startnode)
+    diff = end - span.start
+    qlvl = max(len(span.start), len(end))
+    assert len(diff) == qlvl
+    current = Address(span.start.digits)
+    for i in xrange(0, qlvl):
+        while diff[i] > 0:
+            nodes.extend(list_subnodes(current))
+            current += Offset( *( i*( 0,) ) + ( 1,) )
+            if current == end:
+                break
+            nodes.append(get(current))
+            diff.digits[i] -= 1
     return nodes
 
-def append(addr, data=None, title=None, **props):
+def list_subnodes(addr):
+    """
+    Recursively query for all nodes after last digit.
+    """
+    nodes = []
+    node = get(addr)
+    for i in xrange(1, node.length+1):
+        subaddr = Address(addr.digits)#copy()
+        subaddr.digits.append(i)
+        nodes.append(get(subaddr))
+        nodes.extend(list_subnodes(subaddr))
+    return nodes
+
+
+def append(addr, data=[], title=None):
+    """
+    Append content as entry in directory.
+    """
+    assert len(addr.split_all()) == 2
+    contents = []
+    idx = 0
+    for idx, vstr in enumerate(data):
+        length = len(vstr)
+        if length > 1024**3:
+            raise "XXX: Largish data..? %s" % length
+        #increment('virtual', length)
+        if idx == 0:
+            assert isinstance(data[0], unicode)
+            size = len(data[0].encode('utf-8'))
+            v = LiteralContent(data=data[0], length=length, size=size)
+        if idx == 1:
+            v = LinkContent(data=data[1], length=length)
+        if idx == 2:
+            v = ImageContent(data=data[2])
+        if idx > 2:
+            raise InvalidVType, idx
+        v.put()
+        contents.append(v.key())
+    base = get(addr)        
+    n = _new_node(base, None, kind='entry', title=title)
+    n.content = contents
+    n.leafs = len(data)
+    n.put()
+    logging.info("Stored %i virtual streams at %s", idx+1, n)
+    return n
+        
+
+def append_old(addr, data=None, title=None, **props):
     """
     Append data for Entry type at address.
 

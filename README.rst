@@ -1,24 +1,168 @@
 Permascroll
 ===========
 :created: 2010-01-01
-:updated: 2010-07-19
+:updated: 2010-12-03
 
 
-For each publication there is a numbered channel or directory, with
-a numbered entry. Each entry contains a measure of data. Having an append-only 
+.. epigraph::
+
+   For any medium has the power of imposing its own assumption on the unwary.
+   Prediction and control consist in avoiding this subliminal state of Narcissus
+   trance. But the greatest aid to this end is simply in knowing that the spell
+   can occur immediately upon contact, as in the first bars of a melody.
+
+   --Marshall McLuhan, Understanding Media
+
+
+.. rubric:: This project describes a `permascroll` implementation for `Google App Engine`.
+
+.. rubric:: What follows is a short introduction. From the 
+
+
+Let each publication be a set of symbols.
+Let each symbol node have *a size of 1*.
+The interpretation of each node is left to the client.
+
+Let there additionally be *zero-width* nodes, 'virtual points' that only store a pointer to a range of symbols elsewhere. 
+Now a single link enables transclusion: virtual duplication and transpositioning of pieces of existing publications.
+Multi-way links enable a great deal of forms, overlaying structure on the sets of symbols.
+The interpretation of these links again being left to the client.
+
+This, at a minimum, is the essence of the Xanalogical system (of hypertext, hyperstructure) that Ted Nelson describes.
+
+
+Technicalities
+--------------
+The given functional description is intentionally very generic.
+Because if an implementation reaches such a level of generality, 
+then there is nothing standing in the way of system integration.
+Whatever that system may be.
+But lets get on with the details.
+
+
+1. The first implication is a permanent address space. 
+2. The second a set of meaningful or useful rules for linking. 
+
+
+The first implies a choice of encoding.
+The easy way is to shout 'unicode!' and have a solution to map many known scripts to and from a multibyte encoding. 
+But ofcourse then there's are various other forms of publication, 
+many of which (hopefully) have new, non-sequential presentations to contrast
+with the perception of media as being linear.
+
+Secondly, only if a client knows the document structure is it going to handle 
+that structure in any specific, non-generic way. 
+
+
+Overview
+--------
+A publication consists of data and links.
+
+There may be different types of data, with different types of address spaces.
+
+Addresses start with three components in the form of local tumbler addresses,
+one for the identity of the host, one for the owner, 
+and one for the publication itself.
+
+- /node/1.1/1.2/5.3.1
+
+This identifies a publication, a container for content.
+Each node may be given a title to use for convenience as label in outlining.
+
+But only the last node holds links to content. 
+Content can be deleted, but nodes cannot. 
+
+The tumbler-component approach gives a node-address two forms of hierarchical relationship. 
+One is intrinsical to tumblers: each sub-address lies in between parent + 1.
+The other is the linking of the components in a hierarchical way.
+
+HTTP service
+------------
+
+/node/[0-9]+
+  :type: Docuverse
+  :GET: returns node description
+  :POST: increment tumbler, create Docuverse and return node description (\*typical)
+  :access: sysadmin
+  :params: title
+
+  ::
+
+    $ curl http://permascroll.appspot.com/node/1 -F title="My Docuverse" 
+    [My Docuverse, with 0 positions at 1.1, and 0 sub-adresses]
+
+/node/1.1
+  :type: Node
+  :access: sysadmin
+
+/node/1.1/1
+  :type: Directory
+  :access: group or user
+
+  ::
+
+    $ curl http://permascroll.appspot.com/node/1.1/ -F title="My directory" 
+    [My Directory, with 0 positions at 1.1.0.1, and 0 sub-adresses]
+
+/node/1.1/1/1
+  :type: Entry
+
+  ::
+
+    $ curl http://permascroll.appspot.com/node/1.1/1/1.1 -X POST
+    [Untitled Entry, with 0 positions at 1.1.0.1.0.1, and 0 sub-adresses]
+
+  Which is not very useful, but can be appropiated given a title and allows
+  grouping of entry sequences. Normally, ``/upload/`` is used however for
+  creating `Entry` nodes.
+
+/node/1.1~0.1
+  :type: Node/Directory/Entry query
+  :GET: returns a list of node descriptions
+
+/upload/1.1/1/1/1
+  :POST: accept and store content, increment tumbler, create Entry and acknowledge new node if successful 
+
+  ::
+
+    $ curl http://permascroll.appspot.com/node/1.1/ -F title="My directory" 
+    [My Directory, with 0 positions at 1.1.0.1, and 0 sub-adresses]
+
+/content/1.1/1/1/1~0.1
+  :GET: returns contents or range
+
+
+----
+
+For each publication there is a numbered directory, with
+a numbered entry. Each entry links to a measure of data. Having an append-only 
 policy, an immutable, permanent adress is kept for this data.\ [*]_
 
-Tumbler addressing becomes a prospect. 
-The key point is permanent addressing, thus enabling reuse of content by other
-systems.
-With that, enfiladics and Xanalogical structure may become interesting.
+These numbers form the components of an address, one for each node or virtual location.
+The key point is permanent addressing, thus enabling reuse of content by other systems.
+A permascroll realizes this by an append-only policy. 
 
-But for regular 'web' content, algorithms will be needed to include their content into such a system.
+This may enable use of some xanalogical constructs, but there are no enfiladics
+involved. In a Xanalogical system, linked trees perform a mapping of virtual
+addresses to possibly highly rearranged source data. And in addition enable 
+transclusion and effecient link or endset queries.
 
-Adressing is done on discrete characters.
+For the Web however, proxies may be convenient to rewrite content for use in such a system.
+Using EDL and the Transliterature algorithms, Web content can be annotated.
+Changes in the source will invalidate any referring EDL, only manual annotation
+can track for versions--Docuspheres as submarines on the web.
+
+Adressing is done for discrete characters, and Xanalogical links. 
+These are stored in virtual space 1 and 2, resp.
 Encoding of math formulae and diagrams is not entirely clear.
 Beside literal data, other multimedia data could be adressed.
 
+.. Nodes, Directories and Entries server as a curious, tumbler-addressed
+   phenomenon in the address. These really imply some distributed network
+   addressing scheme. 
+
+   Why, a permascroll node might only serve virtual spaces, 
+   as if the local filesystem. 
 
 Details
 -------
@@ -28,17 +172,8 @@ The docuverse starts at 1, and remains 1?
 There is no registry for (distributed) docuverses.
 1.1 is the first address in the docuverse. 
 
-To address each channel, entry, and virtual position, an address with multiple
-components is needed.
-
-Starting bottom-up, there is a specific entry type with its own address.
-Beneath it are the virtual address spaces within the content.
-The entry itself has a certain position in a container, a container specific to
-the type of the entries. In turn, for specific container types it is possible to
-have different entry address, ie. parallel streams.
-This container is then grouped under a generic node.
-
-Above description gives::
+To address each directory, entry, and virtual position, an address with multiple
+components is needed.::
 
   <node> <directory> <entry> <virtual .. >
 
@@ -54,8 +189,9 @@ Directory and Entry types?
 .. [*] Deleting content could be accomplished by blanking data on the virtual
        addresses (with the propert effect of serving blanks, storage could be truncated). 
        
-       Also a host may ignore address ranges, ie. need not to store everything. 
-       Distributed dereferencing of tumblers is left out of consideration here.
+       A host should probably ignore address ranges, ie. serve everything under its own
+       Node address and only certain, cached or proxied, address ranges for 
+       other nodes. 
 
 Virtual streams
 ---------------
@@ -74,7 +210,7 @@ of its content streams (3, hardcoded?).
 Since in permascroll an entry cannot change, its length and thus its address
 space is fixed. 
 (Entry's may always be inserted in a Channel, though this operation is not
-entirly clear yet and the normal mode would be to append entries to an channel)
+entirly clear yet and the normal mode would be to append entries to an directory)
 
 Sources
 -------

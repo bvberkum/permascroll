@@ -98,7 +98,7 @@ Main classes
 -  1.4.1 A Node
 -  1.4.1.0.1 first channel for node
 -  1.4.1.0.1.0.1 first entry therein..
--  1.4.1.0.1.0.1.0.1 first vstr addr.
+-  1.4.1.0.1.0.1.0.1... first vstr addr.
 """
 class Docuverse(db.Model):
     """
@@ -116,18 +116,16 @@ class Docuverse(db.Model):
         return "[First Docuverse, %s positions]" % self.length
 
 class AbstractNode(db.Model):
+    # tumbler address is used for key
+
     position = db.IntegerProperty(required=True)
-    "Position on parent container (the last digit of the tumbler). "
+    "Position on parent (the last digit of the tumbler). "
 
     length = db.IntegerProperty(default=0)
-    "Nr. of positions below this tumbler. "
+    "Nr. of positions below this tumblers last digit. "
 
     leafs = db.IntegerProperty(default=0)
-    "Nr. of addresses below this component. "
-
-    #@property
-    #def base(self):
-    #    return self.parent()
+    "Nr. of sub-address tumblers below this tumbler component. "
 
     @property
     def tumbler(self):
@@ -159,6 +157,8 @@ class Entry(AbstractNode, db.Model):
     #"Root entry's are based in a Directory, others have a parent Entry. "
     implements(IEntry)
 
+    #content_type = ['PEDL']
+
     content = db.ListProperty(db.Key)
     "One or more keys for Content objects, implementing one or more v-streams.  "
     # The tumbler format of the vstream is determined by the content-type
@@ -175,7 +175,7 @@ class Entry(AbstractNode, db.Model):
 #    "One or more keys for Content objects, implementing one or more v-streams.  "
 
 class LiteralContent(db.Model):
-    data = db.StringProperty()
+    data = db.TextProperty()
     #encoding = PlainStringProperty()
     "Original codec/charset of the text data. "
     md5_digest = db.BlobProperty()
@@ -184,6 +184,9 @@ class LiteralContent(db.Model):
     "Nr. of bytes (length of bytestring). "
     length = db.IntegerProperty()
     "Nr. of characters (length of unicode-text string)."
+
+    def __str__(self):
+        return self.data
 
 class LiteralVStream(object):
     "Adapter for LiteralContent? "
@@ -195,10 +198,12 @@ def Literal_vstream_for_address(): pass
 def Literal_vstream_for_object(): pass
 
 
-class EDL(db.Model):
+class LinkContent(db.Model):
     data = db.ListProperty(db.Link)
     # XXX: size/length?    
 
+class ImageContent(db.Model):
+    pass
 
 class Unused:
     node_id = db.LinkProperty( )

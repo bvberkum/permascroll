@@ -1,0 +1,24 @@
+# Built-in
+#  type, from, to, at
+#
+# Example EDL file
+1. /permascroll/help
+2. :transclude from /permascroll/also
+# is same as:
+#2. /permascroll/help
+# 3. :jump from locspec:1~0.421 to 1.1.0.2.0.1.0.1~0.1
+# 4. :style from  to locspec:1~
+# 5. : from locspec:1~0.1
+#
+@ :type1 from /file to /node at :1.1~0.1
+
+@ :type2 
+    from    /file 
+    to      /node 
+    at      :1.1~0.1
+#
+#@ :type3 
+#from /file 
+#to /node 
+#at :1.1~0.1
+#

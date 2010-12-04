@@ -1,0 +1,89 @@
+@prefix : at 1.1.0.1.0.1
+@prefix linkdoc: at 1.1.0.1.0.2
+@content <<BOUNDARY
+Welcome at permascroll.appspot.com, xanalogical node 1.1.
+
+This document consists of two parts, text and links.
+
+Directory 1 is reserved for system documents, the first of which is this
+introduction. Links understood by this node are described in the second system
+document. BOUNDARY
+@content <<BOUNDARY
+TODO: encodingBOUNDARY
+@link linkdoc:2.1 from 'second system document' to linkdoc:1~0.1
+@link linkdoc:2.3 from 'xanalogical node' to #:2
+
+# Specify the address at which below links and tumblers 
+# are applied. ':' indicates the document address, for these local streams
+# (text, space 1 and links, space 2).
+@prefix : at 1.1.0.1.0.2 
+# Import link types... from same doc?
+#@import 1.1.0.1.0.2
+# Name (and specify) link types
+@content <<BOUNDARY
+type
+    This is available for all documents.
+header
+    This is interpreted to define the document's outline,
+    the from set marks from which point the header is a branch of,
+    ie. the level it is at, the to set the run of header text.
+    If the from set is at the to set of another header link, it is a subheader
+    of that header.
+    XXX: Each header run could be considered a title.
+    The document usually starts at the first header, preceding material
+    considered seperately.
+    The first position (zero-width span) is considered the document root,
+    Any :header from-set after this is will be sub-header of root, ie. :1.1~0.0?
+    XXX: Such a document would not have a title. To set the root header:
+    @link :header :1.1~0 to 'my header'
+title
+    This is interpreted by ... as the (documents?) title.
+BOUNDARY
+# Or the Xu88.1 root types which where less well defined links.
+@content <<BOUNDARY
+jump
+quote
+footnote
+marginal note
+BOUNDARY at 1.1~0.29
+# Now define elementary content link types
+# :type refers to the one built in link-type available for every document
+@link :type from :1.1~0.4 at 2~0.1
+@link :type from :1.5~0.5 at 2~0.2
+@link :type from :1.10~0.6 at 2~0.3
+@link :type from :1.16~0.13 at 2.4
+# This EDL may be inserted once, at the specified address.
+# the 'at' notation prevents duplicates.
+
+# The EDL parser should take note of any use of :type in links.
+
+
+# Switch to a new doc
+@prefix : at 1.1.0.1.0.3
+@import 1.1.0.1.0.2 # import named link types
+# four linktypes are now available in addition to :type
+@link :marginal-note
+# names must be unique, but import is a luxury that only works for
+# a root-type link with ascii name in from-set, convertable to ID.
+# The following suffices too:
+@link 1.1.0.1.0.2.0.2.4
+
+
+# Ie. import and also prefix statements are redundant but useful for brevity of
+# the script. Consider:
+@prefix : at 1.1.0.1.0.4
+@prefix links: at 1.1.0.1.0.2
+@link links:2.1 at :2.1
+# or
+@import 1.1.0.1.0.2 
+@link :jump at :2.1
+# which rewritten to the actual addresses is
+@link 1.1.0.1.0.2.0.2.1 at 1.1.0.1.0.4.0.2.1
+
+# Note that at-parts are always local (':')
+
+# Writing edit rule for document 1.1.0.1.0.3:
+#@ :jump from :1.1~0.4 to 1.1~0.14
+# is identical (parsed/interpreted) to:
+#@ 1.1.0.1.0.2.0.2.1 from 1.1.0.1.0.3.0.1.1~0.4 to 1.1~0.14
+# albeit the last addr. is contrived.

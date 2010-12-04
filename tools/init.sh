@@ -5,19 +5,55 @@ init_nodes()
     # starting at a zero-width 'root' for each component. 
 
     # Create first nodes for components for Node, Directory, Entry
-    #curl $CURL/node/ -X POST -F title="Docuverse I"
-    #curl $CURL/node/1 -X POST -F none=""
+    curl $CURL/node/ -X POST -F title="Docuverse I"
+    curl $CURL/node/ -X POST -F title="Docuverse II"
+    curl $CURL/node/ -X POST -F title="Docuverse III"
+    curl $CURL/node/1 -X POST -F title="Node 1.1"
+    curl $CURL/node/1 -X POST -F title="Node 1.2"
+    curl $CURL/node/1 -X POST -F title="Node 1.3"
+    curl $CURL/node/1 -X POST -F title="Node 1.4"
+    curl $CURL/node/1 -X POST -F title="Node 1.5"
+    curl $CURL/node/1.1 -X POST -F title="Node 1.1.1"
+    curl $CURL/node/1.2 -X POST -F title="Node 1.2.1"
+    curl $CURL/node/1.2 -X POST -F title="Node 1.2.2"
+    curl $CURL/node/1.2 -X POST -F title="Node 1.2.3"
+    curl $CURL/node/1.2 -X POST -F title="Node 1.2.4"
+    curl $CURL/node/1.3 -X POST -F title="Node 1.3.1"
+    curl $CURL/node/1.3 -X POST -F title="Node 1.3.2"
+    curl $CURL/node/1.3 -X POST -F title="Node 1.3.3"
+    curl $CURL/node/2 -X POST -F title="Node 2.1"
+    curl $CURL/node/2.1 -X POST -F title="Node 2.1.1"
+    curl $CURL/node/2.1.1 -X POST -F title="Node 2.1.1.1"
+    curl $CURL/node/1.1/ -X POST -F title="Account 1.1/1"
     #curl $CURL/node/1.1/ -X POST -F none=""
     #curl $CURL/node/1.1/ -X POST -H "Content-Length: 0"
-    curl $CURL/node/1.1/1/ -X POST -F none=""
-    curl $CURL/node/1.1/1/ -X POST -F none="" 
+    #curl $CURL/node/1.1/1/ -F data="Hier eet dit maar dan."
+    #curl $CURL/node/1.1/1/ -d @2010/08/11/permascroll.init.edl
+    #curl $CURL/node/1.1/1/ -F data="`cat 2010/08/11/permascroll.linkdoc.edl`"
+    #curl $CURL/node/1.1/1/ -F data="`cat test.data`"
+    #curl $CURL/node/1.1/1/ -F data=@2010/08/11/permascroll.linkdoc.edl;type=text/x-edl
 
     # dnde - 'dandy' tree layout?
+    echo
+}
 
-    curl $CURL/node/ -X POST -F none="" 
-    curl $CURL/node/ -X POST -F none="" 
-    curl $CURL/node/ -X POST -F none="" 
-    curl $CURL/node/3 -X POST -F none="" 
+test()
+{
+    #curl $CURL"/.test/1.1/1.2.3+0.4.2" -v;
+    #curl $CURL"/node/1.2.3" 
+    curl $CURL"/node/1+1.1.1.2" 
+    echo
+    echo
+    curl $CURL"/node/1.1+1.1.1.2" 
+    #curl $CURL"/content/1.1.0.1.0.1.0.1.1~0.180" -v;
+    #echo
+    #curl $CURL/node/3 -F none="";
+    #echo
+    #curl $CURL/node/ -F title="Foo"
+    #echo
+    #curl $CURL/node/7
+    return
+
     curl $CURL/node/3 -X POST -F none="" 
     curl $CURL/node/3.2 -X POST -F none="" 
     curl $CURL/node/3.2 -X POST -F none="" 
@@ -58,40 +94,13 @@ init_nodes()
     curl $CURL/node/3.2.1.4/2.4.2/2.2.2/ -F data="And more.. "
     curl $CURL/node/3.2.1.4/2.4.2/2.2.2/ -F data="Hey found something.. hmmm. "
     curl $CURL/node/3.2.1.4/2.4.2/2.2.2/ -F data="Ok that was not so interesting. "
-    
-    #curl $CURL/node/1/1 -F title="Another channel"
-    #curl $CURL/node/1/1.1 -F title="Etc.."
-    #curl $CURL/node/1/1/ -F title="My first entry"
-    #curl $CURL/node/1/1/1/ -F data="My first contents"
-    # gives
-    #curl $CURL/node/ -> 1:Node(0~0.1), 2:Node(0~0.1)
-    #curl $CURL/node/1/ -> 1:Channel(0~0.1)
-    #curl $CURL/node/1/1/ -> 1:Entry(0~0.1)
-    #curl $CURL/node/1/1/1/ -> 1:VStr(0~0.31)
-    #curl $CURL/node/1/1/1/1(~0.10) -> "bladieblah"
 
-    #curl $CURL/node/1.1 -F title="My first channel"
-    #curl $CURL/node/1.1.1/ -F title="first"
-    #curl $CURL/node/1.1.1/ -F title="second"
-    #curl $CURL/node/1.1.1/ -F title="third"
-    #curl $CURL/node/1.1.1/ -F title="fourth"
 
-    #curl $CURL/node/1 -F title="Channel I - I"
-    #curl $CURL/node/1 -F title="Channel I - II"
-    #curl $CURL/node/1.2 -F title="Channel I - II - I"
-    #curl $CURL/node/1.2 -F title="Channel I - II - II"
-    #curl $CURL/node/1.2 -F title="Channel I - II - III"
-    #curl $CURL/node/ -F title="Docuverse II"
-    #curl $CURL/node/ -F title="Docuverse III"
-    #curl $CURL/node/ -F title="Docuverse IV"
-    #curl $CURL/node/2 -F title="Channel II - I"
-    #curl $CURL/node/2 -F title="Channel II - II"
-    #curl $CURL/node/2 -F title="Channel II - III"
-    #curl $CURL/node/2.2 -F title="Channel II - II - I"
-    #curl $CURL/node/2.2 -F title="Channel II - II - II"
-    #curl $CURL/node/2.2 -F title="Channel II - II - III"
 }
-CURL_=" -L http://permascroll.appspot.com"
-#CURL_=" -L http://localhost:8083"
+#CURL_=" -L http://permascroll.appspot.com"
+#CURL_=" --trace-ascii - "
+CURL_=" -L http://localhost:8083"
 CURL=" --fail -o /dev/null "$CURL_
-init_nodes
+CURL=$CURL_
+#init_nodes
+test

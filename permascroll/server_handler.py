@@ -13,7 +13,7 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.ext.webapp.util import run_wsgi_app
 
-from permascroll import rc, model, util, api
+from permascroll import rc, model, util, api, xu88
 from permascroll.exception import *
 
 
@@ -106,6 +106,9 @@ class NodeHandler(AbstractHandler):
     @util.http_q(':address')
     def get(self, t_addr):
         "Get the Node at address node(/channel(/entry)). "
+        tcnt = t_addr.depth()
+        if tcnt > 3:
+            raise "RouteError: Node view cannot render virtual address: %s. " % t_addr
         v = api.get(t_addr)
         return v
 
@@ -116,9 +119,10 @@ class NodeHandler(AbstractHandler):
         # determine node type based on components
         kind = 'node'
         if t_addr:
-            tcnt = t_addr.digits.count(0)+1
+            #tcnt = t_addr.digits.count(0)+1
+            tcnt = t_addr.depth()
             newcroot = self.request.uri.endswith('/')
-            logger.info([t_addr, tcnt, newcroot])
+            #logger.info([t_addr, tcnt, newcroot])
             if tcnt == 1:
                 if newcroot: kind = 'channel'
             elif tcnt == 2:
@@ -157,24 +161,79 @@ class QueryHandler(AbstractHandler):
 
 class ContentHandler(AbstractHandler):
 
+    """
+    Entry content data request handler.
+    """
+
     @util.catch
     @util.http_q(':span_or_address')
     def get(self, span_or_address):
-        "Print content for nodes at address or range. "
-        return api.deref(span_or_address)
+        "Print content for virtual positions at address or in range. "
+        if not hasattr(span_or_address, 'start'):
+            addr = span_or_address
+            ccnt = addr.depth()#len(span_or_address.split_all())  
+            if ccnt >= 5: 
+                # Retrieve one or more vpos for vstr in Entry
+                raise "Vpos unhandled"
+            elif ccnt == 4: # redirect to full length for vstr in Entry
+                node, vtype = span_or_address.split()
+                assert vtype.isroot
+                entry = api.get(node)
+                # XXX: db import.. move to API
+                from google.appengine.ext import db
+                vstr = db.get(entry.content[vtype[0]-1])
+                start = span_or_address
+                #offset = xu88.Offset(
+                #        start.split()[0].subcomponent(entry.leafs+1).digits)
+                # FIXME: ugly:
+                offset = xu88.Offset((len(start)-1) * '0.' +
+                        str(entry.leafs))
+                span = xu88.Span(start, offset)
+                print span, `span`, str(span)
+                print span.start
+                print span.end()
+                self.response.headers["Content-Location"] = ''
+                from StringIO import StringIO
+                s = StringIO()
+                span.write(s)
+                self.response.headers["Content-ID"] = s.getvalue()
+                self.response.headers["Content-Location"] = '/content/%s' %\
+                    s.getvalue().replace('.0.', '/')
+                #print type(vstr.data)
+                return vstr.data
+                #print span.write()
+            elif ccnt == 3: # redirect to a list of all vstr
+                # Retrieve all of vstr in Entry
+                start = span_or_address
+                node = api.get(start) # Get Entry
+                print node
+                offset = xu88.Offset((len(span_or_address)-2) * '0.' +
+                        str(node.leafs))
+                span = xu88.Span(span_or_address, offset)
+                print span
+            else:
+                raise "RouteError: /content/%s" % addr
+        else:
+            span = span_or_address
+        return api.deref(span)
 
     @util.catch
-    @util.http_q(':address','data:blob','type:str')
-    def post(self, address, type=None, data=None):
-        "Append content under address `tumbler`. "
-        if not type: type='literal'
-        ccnt = len(address.split_all())
-        assert 3 <= ccnt <= 4, address
-        if ccnt == 3:
-            address = address.subcomponent(
-                    {'literal':'1','link':'2','image':'3'}[type])
-        assert data, (self.request.uri, data)
-        return api.append(address, data=data)
+    @util.http_q(':address','data:blob', 'mediatype:mime')
+    def post(self, address, data=None, mediatype=None):
+        "Append content as entry in directory, import from EDL. "
+        if not mediatype:
+            mediatype = 'text/plain'
+        ccnt = address.depth()#len(address.split_all())
+        #assert ccnt == 2 or ccnt == 4, address
+        assert ccnt == 2, address
+        logging.info("Request to store %s at %s", mediatype, address)
+        if mediatype == 'text/plain':
+            return api.append(address, [data])
+        elif mediatype == 'text/x-edl':
+            text, links, medialinks = pedl.parse_pedl(edl)
+            return api.append(address, [text])
+        else:
+            assert False
 
     #@util.catch
     #@util.http_q(':tumbler',':tumbler',':tumbler',':span',
@@ -189,7 +248,9 @@ class ContentHandler(AbstractHandler):
 
 
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
+
     """
+    XXX:
     Like ContentHandler, but push content to Google's blobstore.
     Accepts literals, images and audio.
     """
@@ -324,25 +385,39 @@ def reDir(path, permanent=True, append=False):
 # URL - Handler mapping
 
 d = dict(
-        sep = r'(?:/|\.0\.)',
-        tumbler = '[1-9][0-9]*(?:\.[1-9][0-9]*)*',
-        offset = '%7E0\.[1-9][0-9]*'
+    sep = r'(?:/|\.0\.)',
+    tumbler = '[1-9][0-9]*(?:\.[1-9][0-9]*)*',
+    tilde = '%7E',
+    plus = '%2B',
+    end = '%7E[1-9][0-9]*(?:\.[1-9][0-9]*)*',
+    width = '(?:\+|%2B)[0-9]*(?:\.[0-9]*)*',
 )
 endpoints = [
+    # Nodes, tumbler address space.
+    # /node/:address - Node
+    # /node/:address/:address - Directory
+    # /node/:address/:address/:address - Entry
+    # /node/:address/:address/:address/:address - Virtual position
     ('/node', reDir('/node/')),
-    # nodes
+    # /node/:address[/:address[/:address]]
     (r'/node/', NodeHandler),
     (r'/node/(%(tumbler)s)/?' % d, NodeHandler),
-    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s)/?' % d, NodeHandler),
+    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s)' % d, NodeHandler),
     (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s)' % d, NodeHandler),
-    # node- range queries
-    (r'/node/(%(tumbler)s%(offset)s)' % d, QueryHandler),
-    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(offset)s)' % d, QueryHandler),
-    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(offset)s)' % d, 
+    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s'
+        '%(sep)s%(tumbler)s(?:%(sep)s(?:%(tumbler)s)?)?)' % d, NodeHandler),
+    # Node- range queries:
+    # /node/[[:address/]:address/]:address:width
+    (r'/node/(%(tumbler)s%(width)s)' % d, QueryHandler),
+    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, QueryHandler),
+    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, 
         QueryHandler),
-    # content and content-range
-    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s?'
-      '(?:%(tumbler)s%(sep)s%(tumbler)s)?(?:%(offset)s)?)' % d, 
+    # Content and content range:
+    # /node/:address/:address/[:address/:address:width]
+    (r'/content/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s?)' % d,
+        ContentHandler),
+    (r'/content/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
+        '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d, 
         ContentHandler),
     # TODO:
     #(r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
@@ -352,7 +427,7 @@ endpoints = [
     #  '%(tumbler)s%(sep)s)download' % d, 
     #    DownloadHandler),
 
-    (r'/.test/(%(tumbler)s%(sep)s%(tumbler)s%(offset)s)' % d, 
+    (r'/.test/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, 
         TumblerTestHandler),
 
     #(r'/feed/([1-9][0-9]*)/entry/([1-9][0-9]*)/?', EntryHandler),
@@ -370,7 +445,7 @@ application = webapp.WSGIApplication( endpoints,
 
 # Main entry point
 def main():
-    logger.info("Library path: %s", rc.LIB)
+    logger.debug("Library path: %s", rc.LIB)
     run_wsgi_app(application)
 
 if __name__ == "__main__":
