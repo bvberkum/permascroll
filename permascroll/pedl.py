@@ -1,7 +1,7 @@
 """
 Permascroll EDL format, similar to Translit EDL.
 
-Status: primitive parser, working.
+Status: primitive parser, working. Not much beyond that.
 
 
 An EDL contains an ordered list of links with at most 4 parts.
@@ -69,12 +69,17 @@ class PEDLDoc(object):
         self.vstreams = vstreams
    
     def append(self, obj):
-        print 'append', obj
+        pass#print 'append', obj
 
 
 class CLink(object):
     
     def __init__(self, typeset, fromset, toset, address=None):
+        self.typeset = typeset
+        self.fromset = fromset
+        self.toset = toset
+        self.address = address
+
         print typeset, fromset, toset, address
 
 
@@ -91,6 +96,7 @@ class PEDLParser(object):
         self.buf = []
         self.links = PEDLDoc()
         if data: self.feed(data)
+        self.__clink = [None for i in xrange(0,5)]
 
     def feed(self, data):
         self.buf += [ l for l in data.split(self.nl) 
@@ -124,7 +130,7 @@ class PEDLParser(object):
         cl = self.__clink
         self.__clink = [None,None,None,None,None,]
         if cl[2:4] == [-1,-1]:
-            cl = cl[0], ':transclude', cl[1], -1, cl[4]
+            cl = [cl[0], ':transclude', cl[1], -1, cl[4]]
         if cl[0][0].isdigit():
             cl[0] = int(cl[0].strip('.'))
         return cl            
@@ -179,12 +185,13 @@ class IllegalLinkType(PEDLError):
 
 
 
-def parse_pedl(edlstr, resolve=False):
+def parse(edlstr, resolve=False):
     """
     """
     ls = []
     p = PEDLParser(edlstr, nl='\n')
     rawlinks = p.finalize()
+    return rawlinks
     for l in rawlinks:
         print l
     return text, links, medialinks
@@ -194,8 +201,10 @@ if __name__ == '__main__':
     INIT = './2010/08/11/permascroll.init.edl'
     LD = './2010/08/11/permascroll.linkdoc.edl'
 
-    parse_pedl(open(INIT).read())
+    #parse(open(INIT).read())
 
     p = PEDLParser(open(LD).read(), nl='\n')
-    print p.finalize()
+    l = p.finalize()
+    print
+    print l
 

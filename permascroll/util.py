@@ -1,19 +1,18 @@
-# Stdlib {{{
 import copy
 import logging
 import pickle
 import re
 import traceback
 import unicodedata
-import urllib # }}}
-# Third party {{{
+import urllib
+
 from google.appengine.api import users 
 from google.appengine.ext import db
-from zope.interface import adapter, interface, providedBy # }}}
-# Local {{{
+from zope.interface import adapter, interface, providedBy
+
+from permascroll import pedl
 from permascroll.xu88 import *
-#from permascroll.registry import components
-from permascroll.exception import * # }}}
+from permascroll.exception import *
 
 
 logger = logging.getLogger(__name__)
@@ -265,8 +264,16 @@ def conv_span_or_address(arg):
         return conv_address(arg)
 
 def conv_blob(arg):
-    pass # TODO
+    if hasattr(arg, 'disposition'): # cgi.FieldSet
+        logging.info((arg, arg.type))
+        if arg.type in data_convertor:
+            logging.info((arg.type, data_convertor[arg.type]))
+            return data_convertor[arg.type](arg)
     return arg
+
+def conv_pedl(arg):
+    text, links, medialinks = pedl.parse(arg)
+    return text, links, medialinks
 
 def conv_mime(arg):
     pass # TODO
@@ -301,6 +308,7 @@ data_convertor = {
     'cslist': cs_list,
     'blob': conv_blob,
     'mime': conv_mime,
+    'text/x-pedl': conv_pedl,
 }
 
 def get_convertor(type_name):
@@ -508,7 +516,14 @@ def http_q(*fields, **kwds): # {{{
             if m in ('POST','GET'):
                 if qwd_method == 'auto':
                     # get args explicitly from current request method only
-                    items = getattr(self.request, m).items()
+                    #items = getattr(self.request, m).items()
+                    #items = tuple([
+                    #    (a, self.request.get(a)) 
+                    #    for a in self.request.params()
+                    #])
+                    items = self.request.params.items()
+                    logging.info((items, self.request.arguments()))
+                    # XXX: self.request.params() also seems to work
                 else:
                     # get args from at most both methods
                     if qwd_method in ('get', 'both'):
@@ -516,16 +531,11 @@ def http_q(*fields, **kwds): # {{{
                     if qwd_method in ('post', 'both'):
                         items += self.request.POST.items()
             # validate/convert value for each key
-            #logging.info(items)
-            #logging.info(getattr(self.request, m))
-            #logging.info(getattr(self.request, m)['data'])
             for key, data in items:
                 key = key.replace('_','-')
                 if key in qspec:
                     if qspec[key] == '_':
                         continue # ignore keyword
-                    #logging.info(data)
-                    #logging.info(qspec[key])
                     value = None
                     try:
                         value = qspec[key](data)
@@ -533,7 +543,7 @@ def http_q(*fields, **kwds): # {{{
                         # TODO: report warning in-document
                         logger.warning(e)
                     #logging.info([key, data, value, dir(value)])
-                    if value: # update/add keyword
+                    if value != None: # update/add keyword
                         python_id = make_id(key).replace('-','_')
                         kwds[python_id] = value
             logger.debug(

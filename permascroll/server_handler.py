@@ -2,10 +2,11 @@
 Server handler, handlers for URL endpoints.
 Together with Form handler contains main HTTP serving routines.
 """
-import uuid
-import wsgiref
+import cgi
 from cgi import parse_qs
 import logging
+import uuid
+import wsgiref
 
 from google.appengine.ext import webapp
 from google.appengine.ext import blobstore
@@ -108,18 +109,18 @@ class NodeHandler(AbstractHandler):
         "Get the Node at address node(/channel(/entry)). "
         tcnt = t_addr.depth()
         if tcnt > 3:
-            raise "RouteError: Node view cannot render virtual address: %s. " % t_addr
+            raise RouteError("Node view cannot render virtual address: %s. " %
+                    t_addr)
         v = api.get(t_addr)
         return v
 
     @util.catch
-    @util.http_q(':address','title:unicode')
-    def post(self, t_addr=None, **props):
+    @util.http_q(':address','title:unicode','data:blob')
+    def post(self, t_addr=None, data=None, **props):
         "Create new Node under address. "
         # determine node type based on components
         kind = 'node'
         if t_addr:
-            #tcnt = t_addr.digits.count(0)+1
             tcnt = t_addr.depth()
             newcroot = self.request.uri.endswith('/')
             #logger.info([t_addr, tcnt, newcroot])
@@ -131,14 +132,16 @@ class NodeHandler(AbstractHandler):
             elif tcnt == 3:
                 if not newcroot: kind = 'entry'
                 else: assert False, "route error"
-        return api.create(t_addr, kind=kind, **props)
 
-    @util.catch
-    @util.http_q(':span_or_address','title:unicode')
-    def put(self, span_or_address, **props):
-        "Update the Node at address `tumbler`. "
-        assert not hasattr(span_or_address, 'start'), "Span not supported?"
-        return api.update(span_or_address, **props)
+        logging.info(data)
+        return api.create(t_addr, kind=kind, data=data, **props)
+
+    #@util.catch
+    #@util.http_q(':span_or_address','title:unicode')
+    #def put(self, span_or_address, **props):
+    #    "Update the Node at address `tumbler`. "
+    #    assert not hasattr(span_or_address, 'start'), "Span not supported?"
+    #    return api.update(span_or_address, **props)
 
     #@util.catch
     #@util.http_q(':tumbler',':tumbler',':tumbler')
@@ -174,10 +177,10 @@ class ContentHandler(AbstractHandler):
             ccnt = addr.depth()#len(span_or_address.split_all())  
             if ccnt >= 5: 
                 # Retrieve one or more vpos for vstr in Entry
-                raise "Vpos unhandled"
+                raise Exception("Vpos unhandled")
             elif ccnt == 4: # redirect to full length for vstr in Entry
                 node, vtype = span_or_address.split()
-                assert vtype.isroot
+                assert vtype.isroot, vtype
                 entry = api.get(node)
                 # XXX: db import.. move to API
                 from google.appengine.ext import db
@@ -250,7 +253,6 @@ class ContentHandler(AbstractHandler):
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 
     """
-    XXX:
     Like ContentHandler, but push content to Google's blobstore.
     Accepts literals, images and audio.
     """
@@ -258,11 +260,17 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     @util.catch
     @util.http_q(':address')
     def post(self, address):
-        "Accepts multipart/form-data"
-        upload_files = self.get_uploads('file')  # 'file' is file upload field in the form
+        """
+        Accepts multipart/form-data.
+        The data part  may have a filename and content-type.
+        """
+        # have not seen this work yet with curl, perhaps try out the form-example                
+        upload_files = self.get_uploads('data')
+        logging.info(upload_files)
         blob_info = upload_files[0]
         res_key = blob_info.key()
-        #self.redirect('/%s' % blob_info.key())
+        logging.info("Stored data %s", res_key)
+        self.redirect('/%s' % blob_info.key())
 
 
 class DownloadHandler(blobstore_handlers.BlobstoreDownloadHandler):
@@ -403,6 +411,7 @@ endpoints = [
     (r'/node/', NodeHandler),
     (r'/node/(%(tumbler)s)/?' % d, NodeHandler),
     (r'/node/(%(tumbler)s%(sep)s%(tumbler)s)' % d, NodeHandler),
+    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s)' % d, NodeHandler),
     (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s)' % d, NodeHandler),
     (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s'
         '%(sep)s%(tumbler)s(?:%(sep)s(?:%(tumbler)s)?)?)' % d, NodeHandler),
@@ -419,9 +428,11 @@ endpoints = [
     (r'/content/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
         '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d, 
         ContentHandler),
-    # TODO:
-    #(r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
-    #  '(?:%(tumbler)s%(sep)s)?)upload' % d, 
+    # TODO:upload blobs?
+    (r'/upload/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s)' % d,
+        UploadHandler),
+    #(r'/upload/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
+    #    '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d, 
     #    UploadHandler),
     #(r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
     #  '%(tumbler)s%(sep)s)download' % d, 

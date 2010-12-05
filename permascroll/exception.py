@@ -7,3 +7,6 @@ class NotFound(Exception):
 
 class InvalidVType(Exception):
     pass
+
+class RouteError(Exception):
+    pass

@@ -12,16 +12,20 @@
   a mailinglist item, this may be Message(key_name='someid@ahost').
 
 """
-import random
 from cgi import parse_qs
+import random
+import logging
+
+from google.appengine.api import memcache
+from google.appengine.ext import db
+from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 import zope.interface
 from zope.interface import implements
+
 from permascroll.util import INode, IDirectory, IEntry, PickleProperty
-from google.appengine.ext import db
-from google.appengine.api import memcache
-from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 
 
+logger = logging.getLogger(__name__)
 
 def is_cached(etag):
     return memcache.get(etag) != None
@@ -118,6 +122,10 @@ class Docuverse(db.Model):
 class AbstractNode(db.Model):
     # tumbler address is used for key
 
+    def __init__(self, *args, **props):
+        assert not args or props, ("Abstract class expects no arguments/props", args, props)
+        super(AbstractNode, self).__init__(**props)
+
     position = db.IntegerProperty(required=True)
     "Position on parent (the last digit of the tumbler). "
 
@@ -157,8 +165,22 @@ class Entry(AbstractNode, db.Model):
     #"Root entry's are based in a Directory, others have a parent Entry. "
     implements(IEntry)
 
-    #content_type = ['PEDL']
+    def __init__(self, data='', **props):
+        super(Entry, self).__init__(**props)
+        if data:
+            self.add_vstream(data)
 
+    def add_vstream(self, data):
+        assert isinstance(data, unicode)
+        bytesize = len(data.encode('utf-8'))
+        #md5digest = 
+        content = LiteralContent(data=data, size=bytesize, length=len(data))
+        content.save()
+        self.content.append(content.key())
+        self.leafs += 1
+        self.save()
+
+    #content_type = ['PEDL']
     content = db.ListProperty(db.Key)
     "One or more keys for Content objects, implementing one or more v-streams.  "
     # The tumbler format of the vstream is determined by the content-type
@@ -176,10 +198,11 @@ class Entry(AbstractNode, db.Model):
 
 class LiteralContent(db.Model):
     data = db.TextProperty()
+
     #encoding = PlainStringProperty()
-    "Original codec/charset of the text data. "
-    md5_digest = db.BlobProperty()
-    "MD5 digest of bytestring. "
+    #"Original codec/charset of the text data. "
+    #md5_digest = db.BlobProperty()
+    #"MD5 digest of bytestring. "
     size = db.IntegerProperty()
     "Nr. of bytes (length of bytestring). "
     length = db.IntegerProperty()
@@ -187,16 +210,6 @@ class LiteralContent(db.Model):
 
     def __str__(self):
         return self.data
-
-class LiteralVStream(object):
-    "Adapter for LiteralContent? "
-    def __init__(self, content):
-        self.adaptee = content
-    # vstream = adaptee.data[0:adaptee.length]
-
-def Literal_vstream_for_address(): pass
-def Literal_vstream_for_object(): pass
-
 
 class LinkContent(db.Model):
     data = db.ListProperty(db.Link)
@@ -208,6 +221,7 @@ class ImageContent(db.Model):
 class Unused:
     node_id = db.LinkProperty( )
     "A (Web) URI for the node, applicable for non-original content. "
+
 
 """
 MIME message support.
