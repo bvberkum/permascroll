@@ -11,10 +11,13 @@
   Kind is known for keys with the 'mid' scheme. In this case, the entry is 
   a mailinglist item, this may be Message(key_name='someid@ahost').
 
+TODO: lots to clean up here
 """
 from cgi import parse_qs
-import random
+from hashlib import md5
 import logging
+import random
+import uuid
 
 from google.appengine.api import memcache
 from google.appengine.ext import db
@@ -22,10 +25,15 @@ from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 import zope.interface
 from zope.interface import implements
 
+from permascroll import pedl
 from permascroll.util import INode, IDirectory, IEntry, PickleProperty
 
 
 logger = logging.getLogger(__name__)
+
+
+
+### Memcache (XXX: unused)
 
 def is_cached(etag):
     return memcache.get(etag) != None
@@ -37,22 +45,31 @@ def insert_cache(etag, data):
     memcache.add(etag, data)
 
 
-class Status(db.Model):
-    counts = PickleProperty()
-    count_updated = db.ListProperty(str)
-        
-def get_status(name='default'):
-    status = Status.get_by_key_name(name)
-    if not status:
-        #COUNTERS = ['node','directory','entry','virtual']
-        COUNTERS = ['node','channel','entry','virtual']
-        status = Status(counts=dict([(n,0) for n in COUNTERS]),updated=COUNTERS)
-        status.put()
-    return status
 
+### Stats, one per system
+
+COUNTERS = ['node','channel','entry','virtual']
+#COUNTERS = ['node','directory','entry','virtual']
+
+class Stats(db.Model):
+    counts = PickleProperty()
+    "Totals read from sharded counters (pickled dict). "
+    count_updated = db.ListProperty(str)
+    "Sharded counters that have been updated. "
+        
+_default_status_counts = dict([(n,0) for n in COUNTERS])
+
+def get_status(name='default'):
+    # XXX:BVB: is save required?
+    return Stats.get_or_insert(name, name=name, 
+            counts=_default_status_counts,
+            updated=COUNTERS)
+
+
+
+### Sharded counting 
 """
-TODO: sharded counting of all Nodes, Directories, Entries and virtual
-streams/chars/bytes..
+Sharded counting of all Nodes, Directories, Entries and Virtual streams/chars/bytes..
 
 See also http://code.google.com/appengine/articles/sharding_counters.html.    
 """
@@ -64,6 +81,9 @@ class CounterShardConfig(db.Model):
 class CounterShard(db.Model):
     name = db.StringProperty(required=True)
     partial_count = db.IntegerProperty(required=True, default=0)
+
+
+## counter util
 
 def get_count(name):
     status = get_status()
@@ -77,8 +97,10 @@ def get_count(name):
     return status.counts[name]
 
 def increment(name, amount=1):
+    logger.info("Incrementing sharded counter '%s' by '%i'", name, amount)
     config = CounterShardConfig.get_or_insert(name, name=name)
-    def txn():
+    def txn_cshard():
+        #logger.debug("Incrementing sharded counter %s by %i", name, amount)
         shard = random.randint(0, config.num_shards-1)
         shard_name = name + str(shard)
         counter = CounterShard.get_by_key_name(shard_name)
@@ -86,24 +108,28 @@ def increment(name, amount=1):
             counter = CounterShard(key_name=shard_name, name=name)
         counter.partial_count += amount
         counter.put()
-        status = get_status()
+        return shard, counter.partial_count
+    status = get_status()
+    def txn_status():
+        logger.debug("Setting updated status for counter '%s'", name)
         if not name in status.count_updated:
             status.count_updated += [name]
             status.put()
-        return counter.partial_count
-    partcount = db.run_in_transaction(txn)
+    shard, value =db.run_in_transaction(txn_cshard)
+    db.run_in_transaction(txn_status)
     #memcache.incr(name)
 
 
-"""
-Main classes
 
+### Main: hierarchical node structures
+"""
 -  1 First Docuverse
 -  1.4.1 A Node
 -  1.4.1.0.1 first channel for node
 -  1.4.1.0.1.0.1 first entry therein..
 -  1.4.1.0.1.0.1.0.1... first vstr addr.
 """
+
 class Docuverse(db.Model):
     """
     Represented by the Ur-digit, the first digit of a tumbler address. 
@@ -168,19 +194,39 @@ class Entry(AbstractNode, db.Model):
     def __init__(self, data='', **props):
         super(Entry, self).__init__(**props)
         if data:
-            self.add_vstream(data)
+            content_id = self.add_vstream(data)
+            logging.info("First vstream item Entry(%s:%s): %s",
+                    self.key().name(),
+                    content_id, 
+                    data)
 
     def add_vstream(self, data):
-        assert isinstance(data, unicode)
-        bytesize = len(data.encode('utf-8'))
-        #md5digest = 
-        content = LiteralContent(data=data, size=bytesize, length=len(data))
-        content.save()
+        if isinstance(data, basestring):
+            assert isinstance(data, unicode), "Data of wrong type (%s). " % type(data)
+            bytesize = len(data.encode('utf-8'))
+            checksum = md5(data).hexdigest()
+            content = LiteralContent.get_or_insert(checksum, data=data, size=bytesize, 
+                    length=len(data), md5_digest=checksum)
+        elif isinstance(data, pedl.PEDLDoc):
+            # TODO: ID PEDLDoc, write util func to store strings, links
+            cid = str(uuid.uuid4())
+            content = _PEDLPickl_tmp.get_or_insert(cid, data=data)
+
         self.content.append(content.key())
         self.leafs += 1
-        self.save()
 
-    #content_type = ['PEDL']
+        # TODO: set length to (decoded) data symbol size
+        #self.length +=
+
+        content_id = content.key().name()
+
+        self.save()
+        logging.debug("Added item to vstream(%s) %s: %s",
+                self.key().name(),
+                content_id, 
+                data)
+        return content_id
+
     content = db.ListProperty(db.Key)
     "One or more keys for Content objects, implementing one or more v-streams.  "
     # The tumbler format of the vstream is determined by the content-type
@@ -189,8 +235,15 @@ class Entry(AbstractNode, db.Model):
         return "[%s, with %i positions at %s, and %i sub-adresses]" % \
     (self.title or "Untitled %s" % (self.kind()), 
                 self.length, self.tumbler, self.leafs)
-
     #leafs = 3 # XXX: Entry recognizes 3 v-types
+
+
+
+
+### Content leafs (Entry.content)
+
+class _PEDLPickl_tmp(db.Model):
+    data = PickleProperty()
 
 #class Virtual(AbstractNode, db.Model):
 #    content = db.ListProperty(db.Key)
@@ -198,11 +251,12 @@ class Entry(AbstractNode, db.Model):
 
 class LiteralContent(db.Model):
     data = db.TextProperty()
-
+    "Unindexed field for more than 500 chars. "
     #encoding = PlainStringProperty()
     #"Original codec/charset of the text data. "
     #md5_digest = db.BlobProperty()
-    #"MD5 digest of bytestring. "
+    md5_digest = db.StringProperty()
+    "MD5 digest of bytestring. "
     size = db.IntegerProperty()
     "Nr. of bytes (length of bytestring). "
     length = db.IntegerProperty()
@@ -224,7 +278,7 @@ class Unused:
 
 
 """
-MIME message support.
+MIME message support? (XXX: unused)
 """
 
 class MIMEMessage(db.Model):
@@ -282,6 +336,8 @@ class Mailinglist(Directory):
         Entry.create(feed_id, entry_id)
 
 
+## XXX: model utils
+
 def get_form(kind, *properties):
     exclusive = False
     if properties and isinstance(properties[0], bool):
@@ -337,29 +393,4 @@ def validate(data, headers, kind):
     yield form
 
 
-
-# Oldish
-class Unique(db.Model):
-
-    index = db.IntegerProperty()
-
-    @classmethod
-    def check(cls, scope, value):
-        """
-        Create new entity if value is unique, assign index number.
-        """
-        def txn(scope, value):
-            key_name = "U%s:%s" % (scope, value)
-            ue = Unique.get_by_key_name(key_name)
-            if ue:
-                raise UniqueConstraintViolation(scope, value)
-            ue.index = get_count(scope)
-            ue.put()
-            return ue.index
-        return db.run_in_transaction(txn, scope, value)
-
-class UniqueConstraintViolation(Exception):
-    def __init__(self, scope, value):
-        super(UniqueConstraintViolation, self).__init__(
-                "Value '%s' is not unique within scope '%s'." % (value, scope, ))
 

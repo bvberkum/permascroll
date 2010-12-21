@@ -190,8 +190,8 @@ def parse(edlstr, resolve=False):
     """
     ls = []
     p = PEDLParser(edlstr, nl='\n')
-    rawlinks = p.finalize()
-    return rawlinks
+    doc = p.finalize()
+    return doc
     for l in rawlinks:
         print l
     return text, links, medialinks

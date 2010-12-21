@@ -30,8 +30,17 @@ lib.zip:
 	cd lib;zip $@ -r zope \
         -x '*/.svn*' -x '*/.bzr*' -x '*.pyc'; mv $@ ..
 
-clean:
+clean: 
 	find -L ./ -iname '*.pyc'|while read f; do sudo rm $$f;done
+
+clean-user:: clean-db clean-blobs
+	@echo "Removed local datastore and blobstore. "
+
+clean-db:: 
+	rm .tmp/datastore
+
+clean-blobs:: 
+	rm .tmp/blobstore
 
 
 # vim:noet

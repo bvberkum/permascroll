@@ -67,14 +67,28 @@ and one for the publication itself.
 - /node/1.1/1.2/5.3.1
 
 This identifies a publication, a container for content.
-Each node may be given a title to use for convenience as label in outlining.
+The first digit of the first tumbler is the ur-digit, it indicates the
+docuverse. 
 
+Each node may be given a title to use for convenience as label in outlining.
 But only the last node holds links to content. 
+
 Content can be deleted, but nodes cannot. 
+Each node has an append-only policy.
+This means at any time the entire docuverse has a certain width,
+but since this width is expressed in a difference tumbler, the exact number of
+virtual positions will not be recorded in this tree.
 
 The tumbler-component approach gives a node-address two forms of hierarchical relationship. 
 One is intrinsical to tumblers: each sub-address lies in between parent + 1.
 The other is the linking of the components in a hierarchical way.
+
+Each publication node has a width that is derived from the contents it links to.
+
+These tumbler adresses are local, meaning they are not in any way distributed.
+
+TODO: implement Entry to link to append-only unicode literal and link space.
+
 
 HTTP service
 ------------
@@ -130,6 +144,76 @@ HTTP service
 
 /content/1.1/1/1/1~0.1
   :GET: returns contents or range
+
+
+PEDL
+----
+- PEL, PEDL: Permanent Edit Lists?
+- PDEF: Permanent Edit Definition File?
+
+This is an preliminary version of an import/export format for Permascroll data.
+
+* Each entry consists of two extendable data spaces.
+* Each file holds content/links for one or more entries.
+* Each line is a comment, others are part of an PEDL statement.
+* PEDL statements are strings, prefixed by a leader character sequence.
+  By default the leader is '@'?
+* The following expressions are recognized, statements starting with:
+
+  content
+    the following arguments are HEREDOC strings, and/or location
+    indicators for external content.
+
+    The ``at`` keyword may indicate the intended location of the content,
+    and may serve to make the insert conditional.
+    If the given location is not available, the statement fails.
+    
+  link
+    The expression consists a keyword from ``type, from, to`` and ``at``,
+    follewed by one or more location indicators.
+
+    The keywords may appear in any sequence,
+    and indicate the part of the link the locator belongs to.
+    ``type`` is a special part, that recognizes built-in locators.
+
+    The ``at`` keyword works the same for links as it does for contents.
+
+    This is the default statement, meaning any leader without subsequent statement keyword is interpreted as a link.
+
+  prefix/bind
+    bind address space to a prefix using the ``at`` keyword.
+
+* Contents are loaded from locator, or given in HEREDOC style multiline strings.
+* Locators come in URL form, in tumbler address or span form or in
+  a regular expression/search-string form?
+* Tumbler locators may be abbreviated by binding an address to a prefix.
+
+  - This prefix-notation borrows some from Notation3.
+  - A prefix is a ID followed by ':'.
+  - The ':' prefix is by default bound to the current document (the entry node),
+    any tumbler following it addresses a dataspace/virtual stream of that node.
+
+    Content by default is inserted into that node.
+
+* The type part of a link usually refers to another link that provides an
+  discription of a class of links.
+
+* The Permascroll Link document describes the built-in link types.
+  The root of all link types is 'type', the first linkdoc link at
+  ``1.1.0.1.0.2.0.2.1`` or ``linkdoc:type``.
+
+  Type is built-in and at that address whatever the linkdoc says.
+
+* New link-types are made by linking from :type to any new description.  
+
+  The text in the to set should be a single word and will be converted to 
+  link type ID. 
+  The link should only contain these parts.
+
+Protocol Layering
+__________________
+* The PEDF receiver is bound to a document.
+  There is a generic receiver and a per-entry receiver.
 
 
 ----

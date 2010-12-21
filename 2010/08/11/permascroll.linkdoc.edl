@@ -45,7 +45,8 @@ jump
 quote
 footnote
 marginal note
-BOUNDARY at 1.1~0.29
+BOUNDARY
+at :1.1~0.29
 # Now define elementary content link types
 # :type refers to the one built in link-type available for every document
 @link :type from :1.1~0.4 at 2~0.1

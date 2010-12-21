@@ -112,7 +112,7 @@ def _new_node(parent, base, kind=None, **props):
         parent.put()
     else:        
         base.put()
-    #increment(kind)            
+    increment(kind)            
     new.put()
     return new
 

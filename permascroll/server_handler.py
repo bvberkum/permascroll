@@ -1,6 +1,8 @@
 """
 Server handler, handlers for URL endpoints.
 Together with Form handler contains main HTTP serving routines.
+
+XXX: this must be the dirtiest file, loose nuts and bolts ahead!
 """
 import cgi
 from cgi import parse_qs
@@ -133,7 +135,6 @@ class NodeHandler(AbstractHandler):
                 if not newcroot: kind = 'entry'
                 else: assert False, "route error"
 
-        logging.info(data)
         return api.create(t_addr, kind=kind, data=data, **props)
 
     #@util.catch

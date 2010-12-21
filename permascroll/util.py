@@ -1,3 +1,6 @@
+"""
+Assorted auxiliary classes/functions.
+"""
 import copy
 import logging
 import pickle
@@ -16,6 +19,36 @@ from permascroll.exception import *
 
 
 logger = logging.getLogger(__name__)
+
+
+
+### Components
+
+class IModel(interface.Interface): pass
+class INode(IModel): pass
+class IDirectory(IModel): pass
+class IEntry(IModel): pass
+class IVirtual(IModel): pass
+#class ILiteralContent(IVirtual): pass
+#class IEDL(IVirtual): pass
+class IOutput(interface.Interface): pass
+
+components = adapter.AdapterRegistry()
+
+class NodeXMLOutputAdapter(object):
+    def __init__(self, adaptee):
+        self.model = adaptee
+    def serialize(self):
+        pass
+    #def __call__(self, adapter):
+
+components.register([INode], IOutput, 'xml', NodeXMLOutputAdapter)
+components.register([IDirectory], IOutput, 'xml', NodeXMLOutputAdapter)
+components.register([IEntry], IOutput, 'xml', NodeXMLOutputAdapter)
+
+
+
+### Model properties
 
 class PickleProperty(db.Property):
   """A property for storing complex objects in the datastore in pickled form.
@@ -70,6 +103,38 @@ class Link(unicode): # {{{
     def ToXml(self):
         return u'<link href=%s />' % saxutils.quoteattr(self)
     # }}}
+
+
+## Oldish (unused)
+
+class Unique(db.Model):
+
+    index = db.IntegerProperty()
+
+    @classmethod
+    def check(cls, scope, value):
+        """
+        Create new entity if value is unique, assign index number.
+        """
+        def txn(scope, value):
+            key_name = "U%s:%s" % (scope, value)
+            ue = Unique.get_by_key_name(key_name)
+            if ue:
+                raise UniqueConstraintViolation(scope, value)
+            ue.index = get_count(scope)
+            ue.put()
+            return ue.index
+        return db.run_in_transaction(txn, scope, value)
+
+class UniqueConstraintViolation(Exception):
+    def __init__(self, scope, value):
+        super(UniqueConstraintViolation, self).__init__(
+                "Value '%s' is not unique within scope '%s'." % (value, scope, ))
+
+
+
+
+### Argument parser/convertor utilities
 
 def _format_values(values, combine='or'):
     if len(values) > 1:
@@ -272,13 +337,15 @@ def conv_blob(arg):
     return arg
 
 def conv_pedl(arg):
-    text, links, medialinks = pedl.parse(arg)
-    return text, links, medialinks
+    doc = pedl.parse(arg)
+    return doc
 
 def conv_mime(arg):
     pass # TODO
     return arg
 
+
+## Parser/convertor registry
 
 data_convertor = {
     'bool': conv_bool,
@@ -320,54 +387,9 @@ def get_convertor(type_name):
     else:
         return data_convertor[type_name]
 
-def merge(d, **kwds):
-
-    """
-    Recursive dictionary merge, ie. multi-level update.
-
-    Set D[k] = kwds[...][k] where D is any dictionary nested within `d`.
-    Works like dict.update but recurses and updates nested dictionaries
-    first.
-    """
-
-    # merge sublevels before overwriting on update
-    for k in kwds:
-        if isinstance( kwds[k], dict ):
-            if k in d:
-                subl = kwds[k]
-                kwds[k] = merge( d[k], **subl )
-    d.update(kwds)
-    return d
-
-# Components
-
-class IModel(interface.Interface): pass
-
-class INode(IModel): pass
-class IDirectory(IModel): pass
-class IEntry(IModel): pass
-class IVirtual(IModel): pass
-
-#class ILiteralContent(IVirtual): pass
-#class IEDL(IVirtual): pass
-
-class IOutput(interface.Interface): pass
-
-components = adapter.AdapterRegistry()
-
-class NodeXMLOutputAdapter(object):
-    def __init__(self, adaptee):
-        self.model = adaptee
-    def serialize(self):
-        pass
-    #def __call__(self, adapter):
-
-components.register([INode], IOutput, 'xml', NodeXMLOutputAdapter)
-components.register([IDirectory], IOutput, 'xml', NodeXMLOutputAdapter)
-components.register([IEntry], IOutput, 'xml', NodeXMLOutputAdapter)
 
 
-# Req. handler method decorators
+### Request decorators
 
 def mime(method):
     mediatype = 'text/plain'
@@ -506,7 +528,8 @@ def http_q(*fields, **kwds): # {{{
                     value = aspec[idx](urllib.unquote(data))
                 except (TypeError, ValueError), e:
                     # TODO: report warning in-document
-                    logger.warning(e)
+                    logger.warning("Error applying argument convertor for '%s', "
+                            "message: %s, convertor: %s", key, e, qspec[key])
                 # always replace argument
                 args = args[:idx-ignorespecs] + (value,) + args[idx-ignorespecs+1:]
             logger.debug("Converted arguments %s", args)
@@ -541,7 +564,8 @@ def http_q(*fields, **kwds): # {{{
                         value = qspec[key](data)
                     except (TypeError, ValueError), e:
                         # TODO: report warning in-document
-                        logger.warning(e)
+                        logger.warning("Error applying data convertor for '%s', "
+                                "message: %s, convertor: %s", key, e, qspec[key])
                     #logging.info([key, data, value, dir(value)])
                     if value != None: # update/add keyword
                         python_id = make_id(key).replace('-','_')
@@ -553,7 +577,9 @@ def http_q(*fields, **kwds): # {{{
     return http_qwds
     # }}}
 
+
 ## User and Alias authentication
+
 def web_auth(method): # {{{
     " Authenticate, prefix user.  "
     #@functools.wraps(method)
@@ -570,6 +596,46 @@ def web_auth(method): # {{{
     return authorize_user_decorator
     # }}}
 
+
+## Experimental (unused)
+
+list_param_set = (
+        #('page', 'size', 'total') # XXX: relative
+        ('num:int', 'start:long'), # like GAE dev-server admin
+    )
+
+def _find_pattern(kwds):
+    for lp in list_param_set:
+        v = True
+        if lp[0] not in kwds:
+            continue
+        else:
+            for query_name in lp:
+                if query_name not in kwds:
+                    #logger.info('Query failed for pattern %s', lp)
+                    v = False
+            if v:
+                return lp
+
+def list_q(method):
+    "Do paging by parameters on list-queries, see model.api functions. "
+    def list_q_wrap(*args, **kwds):
+        p = _find_pattern(kwds)
+        if p:
+            cnt_, start = p
+            if cnt_ in kwds:
+                cnt = kwds.get(cnt,0)
+            if start_ in kwds:
+                start = kwds.get(start,0)
+        else: # some compat. mode
+            return method(*args, **kwds)
+        q = method(*args, **kwds)
+        return q.fetch(cnt, start)
+    return list_q_wrap
+    
+
+
+### Borrowed from docutils: makeid
 
 def make_id(string): # {{{
     """
@@ -667,38 +733,26 @@ _non_id_translate_digraphs = {
 
 # }}}
 
-list_param_set = (
-        #('page', 'size', 'total') # XXX: relative
-        ('num:int', 'start:long'), # like GAE dev-server admin
-    )
 
-def _find_pattern(kwds):
-    for lp in list_param_set:
-        v = True
-        if lp[0] not in kwds:
-            continue
-        else:
-            for query_name in lp:
-                if query_name not in kwds:
-                    #logger.info('Query failed for pattern %s', lp)
-                    v = False
-            if v:
-                return lp
 
-def list_q(method):
-    "Do paging by parameters on list-queries, see model.api functions. "
-    def list_q_wrap(*args, **kwds):
-        p = _find_pattern(kwds)
-        if p:
-            cnt_, start = p
-            if cnt_ in kwds:
-                cnt = kwds.get(cnt,0)
-            if start_ in kwds:
-                start = kwds.get(start,0)
-        else: # some compat. mode
-            return method(*args, **kwds)
-        q = method(*args, **kwds)
-        return q.fetch(cnt, start)
-    return list_q_wrap
-    
+### Array utils
+
+def merge(d, **kwds):
+
+    """
+    Recursive dictionary merge, ie. multi-level update.
+
+    Set D[k] = kwds[...][k] where D is any dictionary nested within `d`.
+    Works like dict.update but recurses and updates nested dictionaries
+    first.
+    """
+
+    # merge sublevels before overwriting on update
+    for k in kwds:
+        if isinstance( kwds[k], dict ):
+            if k in d:
+                subl = kwds[k]
+                kwds[k] = merge( d[k], **subl )
+    d.update(kwds)
+    return d
 
