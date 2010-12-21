@@ -98,13 +98,13 @@ test()
     $CURL/node/1.1/1/1
     $CURL/content/1.1/1/1
 }
-#CURL_=" -L http://permascroll.appspot.com"
 CURL=" --trace-ascii - "
-CURL=$CURL" -L http://localhost:8083"
+CURL=$CURL" -L http://permascroll.appspot.com"
+#CURL=$CURL" -L http://localhost:8083"
 CURL=" --fail "$CURL
 #CURL="-o /dev/null "$CURL
 CURL="curl "$CURL
-#init_nodes
+init_nodes
 init_entries
 #test
 

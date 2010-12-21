@@ -41,6 +41,9 @@ def fetch(addr):
     except NotFound, e:
         return None
 
+def find_content(md5sum):
+    return LiteralContent.get_by_key_name(md5sum)
+
 def get_root():
     """
     The root has no address but keeps track of Ur-digits--it counts docuverses. 

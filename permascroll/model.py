@@ -91,7 +91,7 @@ def get_count(name):
         total = 0
         for counter in CounterShard.all().filter('name = ', name):
             total += counter.partial_count
-        status.count_updated -= [name]
+        status.count_updated.remove(name)
         status.counts[name] = total
         status.put()
     return status.counts[name]

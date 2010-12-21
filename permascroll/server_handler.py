@@ -251,6 +251,18 @@ class ContentHandler(AbstractHandler):
     # XXX: but does not delete resource so not compatible with HTTP
 
 
+class SearchHandler(webapp.RequestHandler):
+
+    @util.catch
+    @util.http_q(like='word',md5sum='word', qwd_method='GET')
+    def get(self, like=None, md5sum=None):
+        logging.info([like, md5sum])
+        self.response.out.write('SearchHandler: '+`like`+' '+`md5sum`+'<br/>' )
+        content = api.find_content(md5sum)
+        # TODO: find entries for content
+        self.response.out.write(`content`+'<br/>' )
+
+
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 
     """
@@ -441,6 +453,9 @@ endpoints = [
 
     (r'/.test/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, 
         TumblerTestHandler),
+
+    (r'/search' % d, 
+        SearchHandler),
 
     #(r'/feed/([1-9][0-9]*)/entry/([1-9][0-9]*)/?', EntryHandler),
     #(r'/feed/([1-9][0-9]*)/?', FeedHandler),

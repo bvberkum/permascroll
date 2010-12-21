@@ -232,6 +232,13 @@ def conv_uri_reference(href): # {{{
     return href
     # }}}
 
+def conv_hex(arg):
+    return hex(int(arg, 16))
+
+def conv_hex32(arg):
+    assert len(arg) == 32
+    return conv_hex(arg)
+
 def conv_bool(arg): # {{{
     """
     Parse yes/no, on/off, true/false and 1/0. Return bool or null.
@@ -348,6 +355,8 @@ def conv_mime(arg):
 ## Parser/convertor registry
 
 data_convertor = {
+    'hex': conv_hex,	    
+    'hex_32byte': conv_hex32,	    
     'bool': conv_bool,
     'int': conv_int,
     'float': conv_float,
