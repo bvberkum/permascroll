@@ -41,8 +41,12 @@ def fetch(addr):
     except NotFound, e:
         return None
 
-def find_content(md5sum):
-    return LiteralContent.get_by_key_name(md5sum)
+def find_content(checksum):
+    return LiteralContent.get_by_key_name(checksum)
+
+def find_entries(checksum):
+    e = Entry.gql("WHERE content = :1", db.Key.from_path('LiteralContent',checksum)).fetch(100)
+    return e
 
 def get_root():
     """
@@ -179,7 +183,6 @@ def list_subnodes(addr):
         nodes.append(get(subaddr))
         nodes.extend(list_subnodes(subaddr))
     return nodes
-
 
 def append(addr, data=[], title=None):
     """

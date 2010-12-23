@@ -257,17 +257,20 @@ class SearchHandler(webapp.RequestHandler):
     @util.http_q(like='word',md5sum='word', qwd_method='GET')
     def get(self, like=None, md5sum=None):
         logging.info([like, md5sum])
-        self.response.out.write('SearchHandler: '+`like`+' '+`md5sum`+'<br/>' )
+        return api.find_entries(md5sum)
+        #self.response.out.write('SearchHandler: '+`like`+' '+`md5sum`+'<br/>' )
         content = api.find_content(md5sum)
         # TODO: find entries for content
-        self.response.out.write(`content`+'<br/>' )
+        #self.response.out.write(`content`+'<br/>' )
+        self.reponse.out.write(`api.find_entries()`)
+        return content.data
 
 
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 
     """
     Like ContentHandler, but push content to Google's blobstore.
-    Accepts literals, images and audio.
+    Accepsts literals, images and audio.
     """
 
     @util.catch
