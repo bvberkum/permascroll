@@ -125,7 +125,6 @@ class NodeHandler(AbstractHandler):
         if t_addr:
             tcnt = t_addr.depth()
             newcroot = self.request.uri.endswith('/')
-            #logger.info([t_addr, tcnt, newcroot])
             if tcnt == 1:
                 if newcroot: kind = 'channel'
             elif tcnt == 2:
@@ -133,8 +132,12 @@ class NodeHandler(AbstractHandler):
                 else: kind = 'entry'
             elif tcnt == 3:
                 if not newcroot: kind = 'entry'
-                else: assert False, "route error"
-
+                else: 
+                    raise RouteError("Node view does not accept post for %s" %
+                            t_addr)
+            else: 
+                raise RouteError("Node view does not accept post for %s" %
+                        t_addr)
         return api.create(t_addr, kind=kind, data=data, **props)
 
     #@util.catch
@@ -341,7 +344,8 @@ class FrontPage(AbstractHandler):
                     'There is neither <em>transclusion</em> nor <em>parallel markup</em>&mdash;'
                     'All Your Bytestreams Are Belong To <del>XUL</del><ins>HTML</ins>.  '
                     '</p>' % (
-                        model.get_count('virtual'), model.get_count('entry'),
+                        model.get_count('virtual'), 
+                        model.get_count('entry'),
                         model.get_count('channel'),
                         ),
     #                ' <form id="_home_nav" method="GET"> '

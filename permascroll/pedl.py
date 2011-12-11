@@ -46,6 +46,7 @@ Special links
 import sys, re
 
 
+
 CRLF = '\r\n'
 LINK_re = r'([\@\*-])|([1-9][0-9]*\.)(?=\s+)'
 TYPE_re = '(.+)'#(.+(?:\s+.+)*)'
@@ -53,6 +54,7 @@ FROM_re = '\s+from\s+(.+)'
 TO_re = '\s+to\s+(.+)'
 AT_re = '\s+at\s+(.+)'
 
+# compile above patterns
 for ptrn in 'link','type','from','to','at':
     mod = sys.modules[__name__]
     compiled = re.compile(getattr(mod, ptrn.upper()+'_re'),re.M|re.S)
@@ -84,48 +86,51 @@ class CLink(object):
 
 
 class PEDLParser(object):
+    """
+    Serial Content-Link parser for PEDL format.
+    """
 
-    links = None
     nl = None
 
     def __init__(self, data=None, nl=CRLF):
-        self.init(data, nl=nl)
-
-    def init(self, data=None, nl=nl):
-        self.nl = nl
+        "Prepare to parse data/links. "
         self.buf = []
-        self.links = PEDLDoc()
+        self.links = []
+        self.nl = nl
         if data: self.feed(data)
-        self.__clink = [None for i in xrange(0,5)]
+        self.__clink = [None,None,None,None,None,] # leader, type, from, to, at
 
     def feed(self, data):
+        "Prepare lines in data that are not comments for parsing. "
         self.buf += [ l for l in data.split(self.nl) 
                 if not l.lstrip().startswith('#') ]
 
     def parse(self, data=None): 
+        "Continue parsing as far as possible. "
         if data:
             self.feed(data)
         for l in self._parse():
             self.links.append(CLink(*l[1:]))
+        return not self.buf
 
     def finalize(self):
-        self.parse()
+        ""
+        if self.buf:
+            self.parse()
+        assert not self.buf, "Data on buffer %i" % len(self.buf)
         return self.links
-
-    def parse_all(self, data=None):
-        self.parse(data)
-        return self.finalize()
 
     # Actual parser
     def _parse(self):
         while self.buf:
             yield self._parse_link()
 
-    __clink = [None,None,None,None,None,] # marker, type, from, to, at
+    __clink = [None,None,None,None,None,] # leader, type, from, to, at
+    "holds single currently parsed link. "
     def _parse_link(self):
         self._parse_ident()
+        # 
         data_length = self._find_ident()
-        #print 'TTTTT',data_length, ' '.join(self.buf)[:data_length]
         self._parse_components(data_length)
         cl = self.__clink
         self.__clink = [None,None,None,None,None,]
@@ -185,16 +190,13 @@ class IllegalLinkType(PEDLError):
 
 
 
-def parse(edlstr, resolve=False):
+def parse(edlstr, storage=None, resolver=None):
     """
     """
     ls = []
     p = PEDLParser(edlstr, nl='\n')
     doc = p.finalize()
     return doc
-    for l in rawlinks:
-        print l
-    return text, links, medialinks
 
 
 if __name__ == '__main__':

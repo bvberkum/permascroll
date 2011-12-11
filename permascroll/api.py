@@ -23,13 +23,15 @@ def get(addr):
     docuverse = get_root()
     if not addr:
         return docuverse
-    
+
     else:
         kind = Node
-        tccnt = addr.digits.count(0)+1
+        tccnt = addr.digits.count(0)+1 # XXX
         if tccnt == 2: kind = Directory
         elif tccnt == 3: kind = Entry
+
         node = kind.get_by_key_name(str(addr))
+
         if not node:
             raise NotFound, (kind, addr)
 
@@ -86,11 +88,14 @@ def create(addr, kind='node', **props):
     else:
         return _new_node(base, None, kind=kind, **props)
 
+
 def _new_node(parent, base, kind=None, **props):
+
     """
     Helper to create a specific entity for the specified address (excluding
     virtual part). 
     """
+
     if parent:
         # attach new node at new sub-component address
         parent.leafs += 1
@@ -101,6 +106,7 @@ def _new_node(parent, base, kind=None, **props):
         base.length += 1
         tumbler = "%s.%s" % (base.tumbler, base.length)
         pos = base.length
+
     if kind == 'node':
         assert isinstance(parent, Docuverse) or \
                 isinstance(base, Node), (parent, base)
@@ -115,18 +121,22 @@ def _new_node(parent, base, kind=None, **props):
         new = Entry(key_name=tumbler, position=pos, **props)
     else:
         raise Exception, kind
+
     if parent:
         parent.put()
     else:        
         base.put()
+
     increment(kind)            
     new.put()
     return new
+
 
 def update(addr, **props):
     "Update properties of node at address. "
     node = get(addr)
     return update_node(node)
+
 
 def update_node(node, **props):
     "Update properties of node. "
@@ -135,6 +145,7 @@ def update_node(node, **props):
         setattr(node, k, v)
     node.put()        
 
+
 #def put_node(tumbler, kind='node', **props):
 #    "Convenience, create node but first assert position. "
 #    # XXX: transaction
@@ -142,6 +153,7 @@ def update_node(node, **props):
 #    base = get(tumbler[:p])
 #    assert base.length+1 == int(tumbler[p-1:])
 #    return create_node(base, kind, **props)
+
 
 @list_q # filter various offset/length paging parameters
 def list_nodes(span):
@@ -184,9 +196,19 @@ def list_subnodes(addr):
         nodes.extend(list_subnodes(subaddr))
     return nodes
 
+
+def append_v(address, stream_index, data):
+    entry = get(address)
+    if stream_index <= entry.spaces:
+        entry.init_stream(stream_index)
+    vstream = entry.content[stream_index]
+    vstream.add(data)
+    vstream.put()
+
+
 def append(addr, data=[], title=None):
     """
-    Append content as entry in directory.
+    Put content as new entry in directory.
     """
     assert len(addr.split_all()) == 2
     contents = []
@@ -215,7 +237,6 @@ def append(addr, data=[], title=None):
     n.put()
     logging.info("Stored %i virtual streams at %s", idx+1, n)
     return n
-        
 
 def append_old(addr, data=None, title=None, **props):
     """
@@ -260,7 +281,8 @@ def append_old(addr, data=None, title=None, **props):
 
 def deref(span):
     "Return data for Entry nodes at address range. "
-    assert span.start.split_all() == 4, "Need complete address, including virtual part. "
+    assert span.start.split_all() == 4, \
+            "Need complete address, including virtual part. "
     entry_addr, vaddr = span.start.split()
 
     # res_key = ...

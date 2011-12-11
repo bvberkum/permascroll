@@ -78,7 +78,6 @@ init_entries()
     # dnde - 'dandy' tree layout?
     echo
 }
-
 test()
 {
     #$CURL"/.test/1.1/1.2.3+0.4.2" -v;
@@ -99,8 +98,9 @@ test()
     $CURL/content/1.1/1/1
 }
 CURL=" --trace-ascii - "
-CURL=$CURL" -L http://permascroll.appspot.com"
+#CURL=$CURL" -L http://permascroll.appspot.com"
 #CURL=$CURL" -L http://localhost:8083"
+CURL=$CURL" -L http://robin.pandora.dennenweg:8083"
 CURL=" --fail "$CURL
 #CURL="-o /dev/null "$CURL
 CURL="curl "$CURL

@@ -1,5 +1,5 @@
 """ 
-- Directorys and Entries in a Directory are counted.                    
+- Directories and Entries in a Directory are counted.                    
 - Mailinglist subclasses abstract class Directory, every list counts as a feed.
 - MIMEMessage does not subclass non-abstract Entry, messages may appear in
   multiple lists, but for each an entry has to exist. 
@@ -55,7 +55,7 @@ class Stats(db.Model):
     counts = PickleProperty()
     "Totals read from sharded counters (pickled dict). "
     count_updated = db.ListProperty(str)
-    "Sharded counters that have been updated. "
+    "Names for sharded counters that have been updated since last count. "
         
 _default_status_counts = dict([(n,0) for n in COUNTERS])
 
@@ -66,7 +66,6 @@ def get_status(name='default'):
             updated=COUNTERS)
 
 
-
 ### Sharded counting 
 """
 Sharded counting of all Nodes, Directories, Entries and Virtual streams/chars/bytes..
@@ -75,21 +74,30 @@ See also http://code.google.com/appengine/articles/sharding_counters.html.
 """
 
 class CounterShardConfig(db.Model):
+    """
+    Model object to store config for a named counter.
+    """
     name = db.StringProperty(required=True)
     num_shards = db.IntegerProperty(required=True, default=20)
 
 class CounterShard(db.Model):
+    """
+    Model object to store a named, partial count.
+    """
     name = db.StringProperty(required=True)
     partial_count = db.IntegerProperty(required=True, default=0)
 
 
-## counter util
-
 def get_count(name):
+    """
+    Consolidate shared counts into global counts.
+    Update totals.
+    """
     status = get_status()
     if name in status.count_updated:
         total = 0
         for counter in CounterShard.all().filter('name = ', name):
+            # .filter('', ): TODO filter shards not modified after TS
             total += counter.partial_count
         status.count_updated.remove(name)
         status.counts[name] = total
@@ -97,6 +105,10 @@ def get_count(name):
     return status.counts[name]
 
 def increment(name, amount=1):
+    """
+    Increment one shard of named sharded counter, 
+    then indicate global stats needs update.
+    """
     logger.info("Incrementing sharded counter '%s' by '%i'", name, amount)
     config = CounterShardConfig.get_or_insert(name, name=name)
     def txn_cshard():
@@ -112,10 +124,10 @@ def increment(name, amount=1):
     status = get_status()
     def txn_status():
         logger.debug("Setting updated status for counter '%s'", name)
-        if not name in status.count_updated:
+        if name not in status.count_updated:
             status.count_updated += [name]
             status.put()
-    shard, value =db.run_in_transaction(txn_cshard)
+    shard, value = db.run_in_transaction(txn_cshard)
     db.run_in_transaction(txn_status)
     #memcache.incr(name)
 
@@ -174,31 +186,46 @@ class AbstractNode(db.Model):
     (self.title or "Untitled %s" % (self.kind()), 
                 self.length, self.tumbler, self.leafs)
 
+Abstrace_props = ('position', 'lenght', 'leafs', 'title')
+
+
 class Node(AbstractNode, db.Model):
-    # parent = Docuverse
-    #base = db.SelfReferenceProperty(required=False)
-    #"Root Node's are based on a Docuverse, others on a Node. "
     implements(INode)
 
+
 class Directory(AbstractNode, db.Model):
-    # parent = Node
-    #base = db.SelfReferenceProperty(required=False)
     implements(IDirectory)
 
+
 class Entry(AbstractNode, db.Model):
-    # parent = Directory
-    #base = db.SelfReferenceProperty(required=False)
-    #"Root entry's are based in a Directory, others have a parent Entry. "
     implements(IEntry)
 
-    def __init__(self, data='', **props):
+    content = db.ListProperty(db.Key)
+    "One or more keys for Content-streams. "
+    # the address space is determined by the content-type
+
+    @property
+    def spaces(self):
+        return len(self.content)
+
+    def __init__(self, data={}, links=[], coords={}, **props):
         super(Entry, self).__init__(**props)
+
         if data:
             content_id = self.add_vstream(data)
             logging.info("First vstream item Entry(%s:%s): %s",
                     self.key().name(),
                     content_id, 
                     data)
+
+#    def init_stream(self, index):
+#        self.content[index] = 
+
+    def append_literal(self, data):
+        self.content[0].append(data)
+
+    def append_link(self, data):
+        self.content[1].append(data)
 
     def add_vstream(self, data):
         if isinstance(data, basestring):
@@ -207,6 +234,9 @@ class Entry(AbstractNode, db.Model):
             checksum = md5(data).hexdigest()
             content = LiteralContent.get_or_insert(checksum, data=data, size=bytesize, 
                     length=len(data), md5_digest=checksum)
+        elif isinstance(data, tuple):
+            pass
+
         elif isinstance(data, pedl.PEDLDoc):
             # TODO: ID PEDLDoc, write util func to store strings, links
             cid = str(uuid.uuid4())
@@ -227,20 +257,14 @@ class Entry(AbstractNode, db.Model):
                 data)
         return content_id
 
-    content = db.ListProperty(db.Key)
-    "One or more keys for Content objects, implementing one or more v-streams.  "
-    # The tumbler format of the vstream is determined by the content-type
-
     def __repr__(self):
         return "[%s, with %i positions at %s, and %i sub-adresses]" % \
     (self.title or "Untitled %s" % (self.kind()), 
                 self.length, self.tumbler, self.leafs)
-    #leafs = 3 # XXX: Entry recognizes 3 v-types
-
-
 
 
 ### Content leafs (Entry.content)
+
 
 class _PEDLPickl_tmp(db.Model):
     data = PickleProperty()
@@ -249,7 +273,9 @@ class _PEDLPickl_tmp(db.Model):
 #    content = db.ListProperty(db.Key)
 #    "One or more keys for Content objects, implementing one or more v-streams.  "
 
+
 class LiteralContent(db.Model):
+     
     data = db.TextProperty()
     "Unindexed field for more than 500 chars. "
     #encoding = PlainStringProperty()
@@ -265,12 +291,15 @@ class LiteralContent(db.Model):
     def __str__(self):
         return self.data
 
+
 class LinkContent(db.Model):
     data = db.ListProperty(db.Link)
     # XXX: size/length?    
 
+
 class ImageContent(db.Model):
     pass
+
 
 class Unused:
     node_id = db.LinkProperty( )

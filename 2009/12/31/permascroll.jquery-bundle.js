@@ -1,1 +1,1 @@
-/home/berend/src/jQuery/jquery-1.3.2.js
+/src/jQuery/jquery-1.3.2.js

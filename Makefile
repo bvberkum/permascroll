@@ -1,9 +1,19 @@
 .PHONY: default srv lib/link clean 
 
+ADDRESS := robin.pandora.dennenweg
+#$(shell hostname)
+
+APP_ENGINE := $(shell echo /src/google-appengine/google_appengine_*/|grep -v '\*'|sort -g|tr ' ' '\n'|tail -1)
 default: lib.zip
 
+srv: ADDRESS ?= 
 srv:
-	dev_appserver.py ./ --port 8083 --blobstore_path .tmp/blobstore --datastore_path .tmp/datastore 
+	echo $(ADDRESS)
+	$(APP_ENGINE)/dev_appserver.py ./ \
+		--address $(ADDRESS) \
+		--port 8083 \
+		--blobstore_path .tmp/blobstore \
+		--datastore_path .tmp/datastore 
 	#--debug_imports
 
 
@@ -28,7 +38,7 @@ lib/link:
 
 lib.zip:
 	cd lib;zip $@ -r zope \
-        -x '*/.svn*' -x '*/.bzr*' -x '*.pyc'; mv $@ ..
+		-x '*/.svn*' -x '*/.bzr*' -x '*.pyc'; mv $@ ..
 
 clean: 
 	find -L ./ -iname '*.pyc'|while read f; do sudo rm $$f;done

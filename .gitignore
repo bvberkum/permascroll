@@ -1,2 +1,4 @@
+/.tmp/
+*.zip
 *.pyc
 *.sw[op]

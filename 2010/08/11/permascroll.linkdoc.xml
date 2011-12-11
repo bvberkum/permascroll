@@ -1,0 +1,17 @@
+<edl version="0.1" type="application/x-permascroll-edl">
+    <base aref="1.1.0.1.0.1" />
+    <prefix id="linkdoc" aref="1.1.0.1.0.2" />
+    <content type="text/x-scroll">Welcome at permascroll.appspot.com, xanalogical node 1.1.
+
+This document consists of two parts, text and links.
+
+Directory 1 is reserved for system documents, the first of which is this
+introduction. Links understood by this node are described in the second system
+document. </content>
+    <content>TODO: encoding</content>
+    <link>
+        <from text="second system document" />
+        <to cref="linkdoc:1~0.1" />
+        <three cref="linkdoc:2.1" />
+    </link>
+</edl>
