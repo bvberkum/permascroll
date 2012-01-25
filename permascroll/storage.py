@@ -1,3 +1,6 @@
+"""
+Unused. This could be convenient in use of edit sessions.
+"""
 from permascroll import api
 from permascroll.exception import NotFound
 from permascroll.model import Entry

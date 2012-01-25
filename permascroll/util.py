@@ -9,7 +9,9 @@ import traceback
 import unicodedata
 import urllib
 
-from google.appengine.api import users 
+import gate
+
+from google.appengine.api import users
 from google.appengine.ext import db
 from zope.interface import adapter, interface, providedBy
 
@@ -35,16 +37,54 @@ class IOutput(interface.Interface): pass
 
 components = adapter.AdapterRegistry()
 
-class NodeXMLOutputAdapter(object):
+class PlainOutputAdapter(object):
     def __init__(self, adaptee):
         self.model = adaptee
-    def serialize(self):
-        pass
-    #def __call__(self, adapter):
+    def __str__(self):
+        return "%s" % self.model
+    def __repr__(self):
+        return "[PlainOutputAdapter %r]" % self.model
 
-components.register([INode], IOutput, 'xml', NodeXMLOutputAdapter)
-components.register([IDirectory], IOutput, 'xml', NodeXMLOutputAdapter)
-components.register([IEntry], IOutput, 'xml', NodeXMLOutputAdapter)
+components.register([INode], IOutput, 'plain', PlainOutputAdapter)
+components.register([IDirectory], IOutput, 'plain', PlainOutputAdapter)
+components.register([IEntry], IOutput, 'plain', PlainOutputAdapter)
+
+class NodeJSONOutputAdapter(object):
+    def __init__(self, adaptee):
+        self.model = adaptee
+    def __str__(self):
+        return "{%s}" % ", ".join([
+            "'%s': %r" % (a, getattr(self.model, a))
+            for a in ('position', 'length', 'leafs', 'title',)
+            ] + [ "'type': '%s'" % self.model.__class__.__name__])
+    def __repr__(self):
+        return "[NodeJSONOutputAdapter %r]" % self.model
+
+class EntryJSONOutputAdapter(object):
+    def __init__(self, adaptee):
+        self.model = adaptee
+    #def __call__(self, adapter):
+    def __str__(self):
+        from google.appengine.ext import db
+
+        content = ""
+        for key in self.model.content:
+            #assert isinstance(obj, LiteralContent)
+            content += db.get(key).data
+
+        return "{%s}" % ", ".join([
+            "'%s': %r" % (a, getattr(self.model, a))
+            for a in ('position', 'length', 'leafs', 'title')
+            ] + [
+                "'type': '%s'" % self.model.__class__.__name__,
+                "'content': '%s'" % content
+            ])
+    def __repr__(self):
+        return "[NodeJSONOutputAdapter %r]" % self.model
+
+components.register([INode], IOutput, 'json', NodeJSONOutputAdapter)
+components.register([IDirectory], IOutput, 'json', NodeJSONOutputAdapter)
+components.register([IEntry], IOutput, 'json', EntryJSONOutputAdapter)
 
 
 
@@ -160,7 +200,7 @@ def choice(argument, values): # {{{
 
 def null_conv(datatype=str, conv=None): # {{{
     """
-    Create convertor for NoneType instances to type-specific empty instances. 
+    Create convertor for NoneType instances to type-specific empty instances.
     (Those for which ___nonzero__ == False holds)
 
     The convertor accepts a Node or string. Param `conv` may be provided for
@@ -180,7 +220,7 @@ def null_conv(datatype=str, conv=None): # {{{
 
 def conv_unicode(arg): # {{{
     "Return unicode, collapsed whitespace. "
-    return re.sub('\s+', ' ', arg).strip()  
+    return re.sub('\s+', ' ', arg).strip()
     # }}}
 
 def conv_str(arg, charset='ascii'): # {{{
@@ -273,12 +313,12 @@ def cs_list(arg): # {{{
         return []#XXX:u'']
     # }}}
 
-def conv_tumbler(arg, T=Tumbler):    
+def conv_tumbler(arg, T=Tumbler):
     arg = arg.strip('/').replace('/','.0.')
     t = T(arg)
     return t
 
-def conv_address(arg):    
+def conv_address(arg):
     return conv_tumbler(arg, T=Address)
 
 def conv_offset(arg):
@@ -355,8 +395,8 @@ def conv_mime(arg):
 ## Parser/convertor registry
 
 data_convertor = {
-    'hex': conv_hex,	    
-    'hex_32byte': conv_hex32,	    
+    'hex': conv_hex,
+    'hex_32byte': conv_hex32,
     'bool': conv_bool,
     'int': conv_int,
     'float': conv_float,
@@ -373,7 +413,7 @@ data_convertor = {
     'text': conv_text, # unicode multiline text
     'href': conv_uri_reference,
     'yesno': conv_yesno,
-    #'timestamp': conv_timestamp, 
+    #'timestamp': conv_timestamp,
     #'isodate': conv_iso8801date,
     #'rfc822date': conv_rfc822date,
     'tumbler': conv_tumbler,
@@ -391,7 +431,7 @@ def get_convertor(type_name):
     if ',' in type_name:
         complextype_names = type_name.split(',')
         basetype = data_convertor[complextype_names.pop(0)]
-        return basetype + tuple([ data_convertor[n] 
+        return basetype + tuple([ data_convertor[n]
                 for n in complextype_names ])
     else:
         return data_convertor[type_name]
@@ -401,6 +441,10 @@ def get_convertor(type_name):
 ### Request decorators
 
 def mime(method):
+    """
+    A decorator to add a fixed media type to the response headers.
+    This will also set MIME-Version: 1.0 and Content-Length.
+    """
     mediatype = 'text/plain'
     #global mediatypes
     #@functools.wraps(method)
@@ -418,6 +462,11 @@ def mime(method):
     return mime_handler
 
 def catch(method):
+    """
+    Catch any exception from calling the method,
+    bring response in proper 500-state if needed.
+    Chains with `mime` decorator.
+    """
     def error_resp_handler(self, *args, **kwds):
         data = None
         try:
@@ -432,12 +481,34 @@ def catch(method):
     return mime(error_resp_handler)
 
 def conneg(method):
+    """
+    Decorator to lookup output adapters for return value,
+    auto-decorates with `catch`.
+    """
     def conneg_wrap(self, *args, **kwds):
         media = method(self, *args, **kwds)
-        adapters = components.lookupAll(providedBy(media), IOutput)
-        #logger.info(adapters)
-        #components.queryAdapter(media, )
-        return media
+        #adapters = components.lookupAll(providedBy(media), IOutput)
+        # Negotiate output format to use
+        response_format = 'xml'
+        conneg = gate.conneg.Conneg.for_request(self.request)
+        variants = (
+                ("json", 1.0, {'type':'application/javascript'}),
+                #("yaml", 1.0, {'type':'application/yaml'}),
+                #("xml", 1.0, {'type': 'application/xml'}),
+                ("plain", 0.4, {'type':'text/plain'}),
+
+                #("xml", 1.0, {'type': 'text/xml'}),
+            )
+        candidate_formats = conneg.select(variants, algorithm="RVSA/1.0")
+        #candidate_formats = [
+        #        (args[0], conneg.accept_rvsa_1_0(*args[0:2], **args[2])[-1])
+        #        for args in variants ]
+        if candidate_formats:
+            response_format = candidate_formats[0]
+            logger.info("Negotiated %s output format", response_format)
+        output = components.queryAdapter(media, IOutput, response_format)
+        logger.info("%s, %r", output, output)
+        return output
     return catch(conneg_wrap)
 
 def error2(method):
@@ -477,18 +548,18 @@ def _convspec(fields):
 
 def http_q(*fields, **kwds): # {{{
     """
-    Convert parameters from URL (GET) or x-form-encoded entity (POST). 
+    Convert parameters from URL (GET) or x-form-encoded entity (POST).
 
-    Unnamed fields are positional arguments from the URL path, matched by the 
+    Unnamed fields are positional arguments from the URL path, matched by the
     handler dispatcher (by embedding match groups in the patterns in the URL
     map).
 
     Named fields are taken from the GET query or the POST entity.
-    Field names are converted to name IDs, and '-' is replaced by '_' 
+    Field names are converted to name IDs, and '-' is replaced by '_'
     (to use the name ID as a Python identifier).
 
     Convertors are loaded from the data_convertor map in this module.
-    For syntax see below. 
+    For syntax see below.
 
     .. raw:: python
 
@@ -515,7 +586,7 @@ def http_q(*fields, **kwds): # {{{
         def qwds_deco(self, *args, **kwds):
             #logger.info(args)
             if self.request.method in ('POST', 'PUT'):
-                ct = self.request.headers.get('Content-Type') 
+                ct = self.request.headers.get('Content-Type')
                 if ';' in ct:
                     p = ct.find(';')
                     ct = ct[:p]
@@ -550,11 +621,11 @@ def http_q(*fields, **kwds): # {{{
                     # get args explicitly from current request method only
                     #items = getattr(self.request, m).items()
                     #items = tuple([
-                    #    (a, self.request.get(a)) 
+                    #    (a, self.request.get(a))
                     #    for a in self.request.params()
                     #])
                     items = self.request.params.items()
-                    logging.info((items, self.request.arguments()))
+                    #logging.info((items, self.request.arguments()))
                     # XXX: self.request.params() also seems to work
                 else:
                     # get args from at most both methods
@@ -641,7 +712,7 @@ def list_q(method):
         q = method(*args, **kwds)
         return q.fetch(cnt, start)
     return list_q_wrap
-    
+
 
 
 ### Borrowed from docutils: makeid

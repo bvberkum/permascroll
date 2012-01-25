@@ -16,7 +16,8 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.ext.webapp.util import run_wsgi_app
 
-from permascroll import rc, model, util, api, xu88
+from permascroll import rc
+from permascroll import model, util, api, xu88
 from permascroll.exception import *
 
 
@@ -132,10 +133,10 @@ class NodeHandler(AbstractHandler):
                 else: kind = 'entry'
             elif tcnt == 3:
                 if not newcroot: kind = 'entry'
-                else: 
+                else:
                     raise RouteError("Node view does not accept post for %s" %
                             t_addr)
-            else: 
+            else:
                 raise RouteError("Node view does not accept post for %s" %
                         t_addr)
         return api.create(t_addr, kind=kind, data=data, **props)
@@ -178,8 +179,8 @@ class ContentHandler(AbstractHandler):
         "Print content for virtual positions at address or in range. "
         if not hasattr(span_or_address, 'start'):
             addr = span_or_address
-            ccnt = addr.depth()#len(span_or_address.split_all())  
-            if ccnt >= 5: 
+            ccnt = addr.depth()#len(span_or_address.split_all())
+            if ccnt >= 5:
                 # Retrieve one or more vpos for vstr in Entry
                 raise Exception("Vpos unhandled")
             elif ccnt == 4: # redirect to full length for vstr in Entry
@@ -283,7 +284,7 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
         Accepts multipart/form-data.
         The data part  may have a filename and content-type.
         """
-        # have not seen this work yet with curl, perhaps try out the form-example                
+        # have not seen this work yet with curl, perhaps try out the form-example
         upload_files = self.get_uploads('data')
         logging.info(upload_files)
         blob_info = upload_files[0]
@@ -344,7 +345,7 @@ class FrontPage(AbstractHandler):
                     'There is neither <em>transclusion</em> nor <em>parallel markup</em>&mdash;'
                     'All Your Bytestreams Are Belong To <del>XUL</del><ins>HTML</ins>.  '
                     '</p>' % (
-                        model.get_count('virtual'), 
+                        model.get_count('virtual'),
                         model.get_count('entry'),
                         model.get_count('channel'),
                         ),
@@ -359,7 +360,7 @@ class FrontPage(AbstractHandler):
     #                ' </form> ',
                     header='<p class="crumbs">Permascroll &raquo; Frontpage </p>',footer='' )
         #    self.response.headers['ETag'] = etag
-        
+
 
 
 
@@ -439,29 +440,29 @@ endpoints = [
     # /node/[[:address/]:address/]:address:width
     (r'/node/(%(tumbler)s%(width)s)' % d, QueryHandler),
     (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, QueryHandler),
-    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, 
+    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d,
         QueryHandler),
     # Content and content range:
     # /node/:address/:address/[:address/:address:width]
     (r'/content/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s?)' % d,
         ContentHandler),
     (r'/content/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
-        '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d, 
+        '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d,
         ContentHandler),
     # TODO:upload blobs?
     (r'/upload/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s)' % d,
         UploadHandler),
     #(r'/upload/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
-    #    '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d, 
+    #    '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d,
     #    UploadHandler),
     #(r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
-    #  '%(tumbler)s%(sep)s)download' % d, 
+    #  '%(tumbler)s%(sep)s)download' % d,
     #    DownloadHandler),
 
-    (r'/.test/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, 
+    (r'/.test/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d,
         TumblerTestHandler),
 
-    (r'/search' % d, 
+    (r'/search' % d,
         SearchHandler),
 
     #(r'/feed/([1-9][0-9]*)/entry/([1-9][0-9]*)/?', EntryHandler),
