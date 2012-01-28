@@ -7,6 +7,7 @@ XXX: this must be the dirtiest file, loose nuts and bolts ahead!
 import cgi
 from cgi import parse_qs
 import logging
+from StringIO import StringIO
 import uuid
 import wsgiref
 
@@ -179,45 +180,37 @@ class ContentHandler(AbstractHandler):
         "Print content for virtual positions at address or in range. "
         if not hasattr(span_or_address, 'start'):
             addr = span_or_address
-            ccnt = addr.depth()#len(span_or_address.split_all())
+            ccnt = addr.depth()
             if ccnt >= 5:
                 # Retrieve one or more vpos for vstr in Entry
-                raise Exception("Vpos unhandled")
-            elif ccnt == 4: # redirect to full length for vstr in Entry
-                node, vtype = span_or_address.split()
+                raise Exception("Vpos unhandled: %s" % ccnt)
+
+            elif ccnt == 4: 
+                # Retrieve full vdata for given vstream of Entry
+                node, vtype = addr.split()
                 assert vtype.isroot, vtype
+                # Retrieve Entry vstream
                 entry = api.get(node)
-                # XXX: db import.. move to API
-                from google.appengine.ext import db
-                vstr = db.get(entry.content[vtype[0]-1])
-                start = span_or_address
-                #offset = xu88.Offset(
-                #        start.split()[0].subcomponent(entry.leafs+1).digits)
-                # FIXME: ugly:
-                offset = xu88.Offset((len(start)-1) * '0.' +
-                        str(entry.leafs))
-                span = xu88.Span(start, offset)
-                print span, `span`, str(span)
-                print span.start
-                print span.end()
+                vdata = entry.fetch_content(vtype[0])
+                # Identify vstream
+                span = entry.get_content_span()
                 self.response.headers["Content-Location"] = ''
-                from StringIO import StringIO
                 s = StringIO()
                 span.write(s)
                 self.response.headers["Content-ID"] = s.getvalue()
                 self.response.headers["Content-Location"] = '/content/%s' %\
                     s.getvalue().replace('.0.', '/')
-                #print type(vstr.data)
-                return vstr.data
-                #print span.write()
-            elif ccnt == 3: # redirect to a list of all vstr
+                return vdata.data
+
+            elif ccnt == 3: 
+                # redirect to a list of all vstr for Entry
                 # Retrieve all of vstr in Entry
-                start = span_or_address
+                start = addr
                 node = api.get(start) # Get Entry
                 print node
-                offset = xu88.Offset((len(span_or_address)-2) * '0.' +
+                offset = xu88.Offset((len(addr)-2) * '0.' +
                         str(node.leafs))
-                span = xu88.Span(span_or_address, offset)
+                span = xu88.Span(addr, offset)
                 print span
             else:
                 raise "RouteError: /content/%s" % addr
@@ -231,8 +224,7 @@ class ContentHandler(AbstractHandler):
         "Append content as entry in directory, import from EDL. "
         if not mediatype:
             mediatype = 'text/plain'
-        ccnt = address.depth()#len(address.split_all())
-        #assert ccnt == 2 or ccnt == 4, address
+        ccnt = address.depth()
         assert ccnt == 2, address
         logging.info("Request to store %s at %s", mediatype, address)
         if mediatype == 'text/plain':

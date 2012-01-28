@@ -38,15 +38,24 @@ def get(addr):
         return node
 
 def fetch(addr):
+    """
+    Like `get` but return None instead of raising NotFound.
+    """
     try:
         return get(addr)
     except NotFound, e:
         return None
 
 def find_content(checksum):
+    """
+    Retrieve data by checksum key.
+    """
     return LiteralContent.get_by_key_name(checksum)
 
 def find_entries(checksum):
+    """
+    Find Entry records that contain data of this checksum key.
+    """
     e = Entry.gql("WHERE content = :1", db.Key.from_path('LiteralContent',checksum)).fetch(100)
     return e
 
@@ -209,6 +218,13 @@ def append_v(address, stream_index, data):
 def append(addr, data=[], title=None):
     """
     Put content as new entry in directory.
+
+    1. literal
+    2. link
+    3. image 
+    
+    TODO: 4. audio 
+    TODO: 5. video
     """
     assert len(addr.split_all()) == 2
     contents = []
@@ -238,47 +254,14 @@ def append(addr, data=[], title=None):
     logging.info("Stored %i virtual streams at %s", idx+1, n)
     return n
 
-def append_old(addr, data=None, title=None, **props):
-    """
-    Append data for Entry type at address.
 
-    1. literal
-    2. link
+def blank(span):
+    "Erase data at span (retains blank space for the range of previous width). "
+    pass # TODO: blank out data at span
 
-    TODO:
-        3. image 
-        4. audio
-        5. video
-    """
-    entry_addr, vaddr = addr.split()
-    base = get(entry_addr)
-    assert base.kind() in ('Entry', 'Directory')
-    length = len(data)
-    if length > 1024**3:
-        raise "XXX: Largish data..? %s" % length
-    increment('virtual', length)
-    #assert isinstance(node, Entry) or isinstance(node, Channel), node
-    v = None
-    if vaddr[0] == 1:
-        v = LiteralContent(data=data, **props)        
-        v.length = len(v.data)
-    elif vaddr[0] == 2:
-        v = EDL(data=data, **props)
-    elif vaddr[0] == 3:
-        v = Image(data=data, **props)
-    else:
-        raise InvalidVType, vaddr[0]
-    # content = 'blob:hash-of-image', 'literal:hash-of-literal', 
-    #           'edl:hash-of-edl'
-    v.put()
-    if base.kind() == 'Entry':
-        n = _new_node(None, base, kind='entry', title=title)
-    else:    
-        n = _new_node(base, None, kind='entry', title=title)
-    n.content = [v.key()]
-    n.put()
-    return n
 
+
+# TODO: use Blobstore instead of datastore
 def deref(span):
     "Return data for Entry nodes at address range. "
     assert span.start.split_all() == 4, \
@@ -308,9 +291,4 @@ def deref(span):
     # Set the read position, then read 100 bytes.
     #blob_reader.seek(2097152)
     #data = blob_reader.read(100)
-
-def blank(span):
-    "Erase data at span (retains blank space for the range of previous width). "
-    pass
-
 

@@ -473,8 +473,9 @@ def catch(method):
             data = method(self, *args, **kwds)
         except Exception, e:
             self.response.set_status(500)
-            self.response.out.write(type(self))
-            self.response.out.write(repr(e))
+            self.response.out.write("%s in %s handler: \n"%(type(e).__name__,
+                    type(self).__name__))
+            self.response.out.write(str(e))
             traceback.print_exc()
         if not data: data = ''
         return unicode(data) # XXX: codec?

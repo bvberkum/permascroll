@@ -25,7 +25,7 @@ from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 import zope.interface
 from zope.interface import implements
 
-from permascroll import pedl
+from permascroll import pedl, xu88
 from permascroll.util import INode, IDirectory, IEntry, PickleProperty
 
 
@@ -176,7 +176,7 @@ class AbstractNode(db.Model):
     @property
     def tumbler(self):
         "The full tumbler URI (key name) for this node. "
-        return self.key().name()
+        return xu88.Tumbler(map(int,self.key().name().split(".")))
 
     title = db.StringProperty(required=False)
     "Unicode string, uniqueness only required for certain Node types. "
@@ -261,6 +261,23 @@ class Entry(AbstractNode, db.Model):
         return "[%s, with %i positions at %s, and %i sub-adresses]" % \
     (self.title or "Untitled %s" % (self.kind()),
                 self.length, self.tumbler, self.leafs)
+
+    def get_content_span(self):
+        start = xu88.Address(self.tumbler)
+        start.digits.append(0)
+        start.digits.append(1)
+        start.digits.append(1)
+        end = start.clone()
+        end.digits[-1] = self.length+1
+        return xu88.Span(start, end)
+
+    def fetch_content(self, vstream_pos=None):
+        if len(self.content) < vstream_pos:
+            raise Exception("Out of range: content-leaf %i for entry %s"
+                    % (vstream_pos, self))
+        vstream_index = vstream_pos - 1
+        vdata = db.get(self.content[vstream_index])
+        return vdata
 
 
 ### Content leafs (Entry.content)
