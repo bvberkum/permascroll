@@ -82,7 +82,7 @@ class CLink(object):
         self.toset = toset
         self.address = address
 
-        print typeset, fromset, toset, address
+        print "%r-->%r  type=%s at %s" % (fromset, toset, typeset, address)
 
 
 class PEDLParser(object):
@@ -203,10 +203,10 @@ if __name__ == '__main__':
     INIT = './2010/08/11/permascroll.init.edl'
     LD = './2010/08/11/permascroll.linkdoc.edl'
 
-    #parse(open(INIT).read())
+    parse(open(INIT).read())
 
-    p = PEDLParser(open(LD).read(), nl='\n')
-    l = p.finalize()
-    print
-    print l
+    #p = PEDLParser(open(LD).read(), nl='\n')
+    #l = p.finalize()
+    #print
+    #print l
 
