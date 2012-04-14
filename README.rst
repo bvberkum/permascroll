@@ -222,13 +222,37 @@ ______________________________________________________________________________
 
 PEDL
 ----
+- Petal: permanent edition transmission language
 - PEL, PEDL: Permanent Edit Lists?
 - PDEF: Permanent Edit Definition File?
 
 This is an preliminary version of an import/export format for Permascroll data.
 
-* Each entry consists of two extendable data spaces.
+* The format is a set of operations on documents expressed in generic rules
+  which resemble Xu88 type of xanalogical links. 
 
+  Each rule at a minimum has an address (empty rule), 
+  ...
+  genericly::
+
+    rule-indent = '-' / '*' / '@'
+    rule-index = *DIGIT '.'
+    rule-indicator = ( rule-ident / rule-index )
+    component-value = tumbler / qname
+    petal-rule = rule-indicator WS [[[[
+            "type" WS component-value] 
+          "from" WS component-value] 
+        "to" WS component-value] 
+      "at" WS component-value]
+    
+* The rules apply to an Permascroll Entry, an Xanalogical document, which may
+  have unlimited dataspaces. Permascroll recognizes two: 1. a unicode text dataspace 
+  and 2. an link dataspace.
+
+  Most rules translate to a link.
+
+* An entry consists of two extendable data spaces.
+  One holds content, one holds links.
 * Each file holds content/links for one or more entries.
 * Each line is a comment, others are part of an PEDL statement.
 * PEDL statements are strings, prefixed by a leader character sequence.
@@ -253,7 +277,8 @@ This is an preliminary version of an import/export format for Permascroll data.
 
     The ``at`` keyword works the same for links as it does for contents.
 
-    This is the default statement, meaning any leader without subsequent statement keyword is interpreted as a link.
+    This is the default statement, meaning any leader without subsequent 
+    statement keyword is interpreted as a link.
 
   prefix/bind
     bind address space to a prefix using the ``at`` keyword.

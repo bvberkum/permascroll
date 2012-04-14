@@ -1,14 +1,14 @@
-""" 
-- Directories and Entries in a Directory are counted.                    
+"""
+- Directories and Entries in a Directory are counted.
 - Mailinglist subclasses abstract class Directory, every list counts as a feed.
 - MIMEMessage does not subclass non-abstract Entry, messages may appear in
-  multiple lists, but for each an entry has to exist. 
+  multiple lists, but for each an entry has to exist.
 - Entries can exist for any kind of entity. The entry_id's scheme has to be
   interpreted to find the Kind that is linked to if one wants to fetch the
   entity.
 
   E.g. for Entry(key_name='mid:someid@ahost') an entity can be found if the
-  Kind is known for keys with the 'mid' scheme. In this case, the entry is 
+  Kind is known for keys with the 'mid' scheme. In this case, the entry is
   a mailinglist item, this may be Message(key_name='someid@ahost').
 
 TODO: lots to clean up here
@@ -25,7 +25,7 @@ from google.appengine.ext.db import polymodel#, djangoforms as gappforms
 import zope.interface
 from zope.interface import implements
 
-from permascroll import pedl
+from permascroll import pedl, xu88
 from permascroll.util import INode, IDirectory, IEntry, PickleProperty
 
 
@@ -56,21 +56,21 @@ class Stats(db.Model):
     "Totals read from sharded counters (pickled dict). "
     count_updated = db.ListProperty(str)
     "Names for sharded counters that have been updated since last count. "
-        
+
 _default_status_counts = dict([(n,0) for n in COUNTERS])
 
 def get_status(name='default'):
     # XXX:BVB: is save required?
-    return Stats.get_or_insert(name, name=name, 
+    return Stats.get_or_insert(name, name=name,
             counts=_default_status_counts,
             updated=COUNTERS)
 
 
-### Sharded counting 
+### Sharded counting
 """
 Sharded counting of all Nodes, Directories, Entries and Virtual streams/chars/bytes..
 
-See also http://code.google.com/appengine/articles/sharding_counters.html.    
+See also http://code.google.com/appengine/articles/sharding_counters.html.
 """
 
 class CounterShardConfig(db.Model):
@@ -106,7 +106,7 @@ def get_count(name):
 
 def increment(name, amount=1):
     """
-    Increment one shard of named sharded counter, 
+    Increment one shard of named sharded counter,
     then indicate global stats needs update.
     """
     logger.info("Incrementing sharded counter '%s' by '%i'", name, amount)
@@ -144,7 +144,7 @@ def increment(name, amount=1):
 
 class Docuverse(db.Model):
     """
-    Represented by the Ur-digit, the first digit of a tumbler address. 
+    Represented by the Ur-digit, the first digit of a tumbler address.
     Permascroll uses addresses with 3 components, ie. 3 tumbler digits
     concatenated by '.0.'.
 
@@ -176,14 +176,14 @@ class AbstractNode(db.Model):
     @property
     def tumbler(self):
         "The full tumbler URI (key name) for this node. "
-        return self.key().name()
+        return xu88.Tumbler(map(int,self.key().name().split(".")))
 
     title = db.StringProperty(required=False)
     "Unicode string, uniqueness only required for certain Node types. "
 
     def __repr__(self):
         return "[%s, with %i positions at %s, and %i sub-adresses]" % \
-    (self.title or "Untitled %s" % (self.kind()), 
+    (self.title or "Untitled %s" % (self.kind()),
                 self.length, self.tumbler, self.leafs)
 
 Abstrace_props = ('position', 'lenght', 'leafs', 'title')
@@ -215,11 +215,11 @@ class Entry(AbstractNode, db.Model):
             content_id = self.add_vstream(data)
             logging.info("First vstream item Entry(%s:%s): %s",
                     self.key().name(),
-                    content_id, 
+                    content_id,
                     data)
 
 #    def init_stream(self, index):
-#        self.content[index] = 
+#        self.content[index] =
 
     def append_literal(self, data):
         self.content[0].append(data)
@@ -232,7 +232,7 @@ class Entry(AbstractNode, db.Model):
             assert isinstance(data, unicode), "Data of wrong type (%s). " % type(data)
             bytesize = len(data.encode('utf-8'))
             checksum = md5(data).hexdigest()
-            content = LiteralContent.get_or_insert(checksum, data=data, size=bytesize, 
+            content = LiteralContent.get_or_insert(checksum, data=data, size=bytesize,
                     length=len(data), md5_digest=checksum)
         elif isinstance(data, tuple):
             pass
@@ -253,14 +253,31 @@ class Entry(AbstractNode, db.Model):
         self.save()
         logging.debug("Added item to vstream(%s) %s: %s",
                 self.key().name(),
-                content_id, 
+                content_id,
                 data)
         return content_id
 
     def __repr__(self):
         return "[%s, with %i positions at %s, and %i sub-adresses]" % \
-    (self.title or "Untitled %s" % (self.kind()), 
+    (self.title or "Untitled %s" % (self.kind()),
                 self.length, self.tumbler, self.leafs)
+
+    def get_content_span(self):
+        start = xu88.Address(self.tumbler)
+        start.digits.append(0)
+        start.digits.append(1)
+        start.digits.append(1)
+        end = start.clone()
+        end.digits[-1] = self.length+1
+        return xu88.Span(start, end)
+
+    def fetch_content(self, vstream_pos=None):
+        if len(self.content) < vstream_pos:
+            raise Exception("Out of range: content-leaf %i for entry %s"
+                    % (vstream_pos, self))
+        vstream_index = vstream_pos - 1
+        vdata = db.get(self.content[vstream_index])
+        return vdata
 
 
 ### Content leafs (Entry.content)
@@ -275,7 +292,7 @@ class _PEDLPickl_tmp(db.Model):
 
 
 class LiteralContent(db.Model):
-     
+
     data = db.TextProperty()
     "Unindexed field for more than 500 chars. "
     #encoding = PlainStringProperty()
@@ -294,7 +311,7 @@ class LiteralContent(db.Model):
 
 class LinkContent(db.Model):
     data = db.ListProperty(db.Link)
-    # XXX: size/length?    
+    # XXX: size/length?
 
 
 class ImageContent(db.Model):
@@ -351,7 +368,7 @@ class Mailinglist(Directory):
         if ml:
             raise Exception('Exists')
         ml = Mailinglist(
-                key_name=mailbox_id, 
+                key_name=mailbox_id,
                 mailbox_id=mailbox_id,
                 feed_id='mailto:%s' % mailbox_id,
                 parent=parent,
@@ -405,7 +422,7 @@ def validate(data, headers, kind):
     1.1. a new entity of kind if the data was valid
     2. the form for kind that was used the validate the data
     """
- 
+
     contenttype = headers.get('content-type', 'application/octet-stream')
     data = decode(data, contenttype)
 

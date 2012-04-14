@@ -1,17 +1,80 @@
 # Built-in
 #  type, from, to, at
 #
+# Each rule start with a list indicator, which should read '*', '-', '@', or 
+# a dotted number. 
+#
 # Example EDL file
+# The following three statements have an identical result:
 1. /permascroll/help
-2. :transclude from /permascroll/also
+2. :transclude from /permascroll/help
+3. :transclude from /permascroll/help to -1 at -1
+
+# 1 ur-digit
+# 1.1 node, 1.1.0.1 account, 1.1.0.1.0.1 doc, 1.1.0.1.0.1.0.1 text vstream
+
+# High level
+1. http://my.interesting/resource
+
+# Details
+1.1.0.1.0.3 << ....
+1.1.0.1.0.1 << Title URL: http:// ...
+1.1.0.1.0.3 :web-source from 1.1.0.1.0.1.0.51~0.6 to 1.1.0.1.0.3.0.1~0.352
+1.1.0.1.0.3 :sgml from "mydoc" to 1.1.0.1.0.1.0.3.0.1~0.352
+1.1.0.1.0.3 :sgml from "mydoc/title" to 1.1.0.1.0.1.0.3.0.1~0.3
+1.1.0.1.0.3 :sgml from "mydoc/subtitle" to 1.1.0.1.0.1.0.3.0.4~0.17
+
+# which is somewhat longish
+# bind <node> <account>
+@bind 1.1 1
+# result, prefixes bound to (open) documents:
+@prefix sys: at 1.1.0.1.0.1
+@prefix link: at 1.1.0.1.0.2
+# also, append docs to 1.1.0.1.
+#
+1. my-file
+# to
+@content from <file://dm/my-file> at 1.1.0.1.0.3
+#
+# ie. 0.0.1/1 is textspace of first document.
+# 
+
+1/1. <<HEREBOUNDARY
+Permascroll Development Edition
+-------------------------------
+This is the system document. It is used to share names and keywords across
+a permascroll implementation. 
+HEREBOUNDARY
+2/1. <<HEREBOUNDARY
+type
+    This is available for all documents. Its a built in type.
+header
+    This is interpreted to define the document's outline,
+    the from set marks from which point the header is a branch of,
+    ie. the level it is at, the to set the run of header text.
+    If the from set is at the to set of another header link, it is a subheader
+    of that header.
+    XXX: Each header run could be considered a title.
+    The document usually starts at the first header, preceding material
+    considered seperately.
+    The first position (zero-width span) is considered the document root,
+    Any :header from-set after this is will be sub-header of root, ie. :1.1~0.0?
+    XXX: Such a document would not have a title. To set the root header:
+    @link :header :1.1~0 to 'my header'
+title
+    This is interpreted by ... as the (documents?) title.
+HEREBOUNDARY
+
+1. petal:prefix from "prefix" to ... at ...
+4. :prefix 
+
 # is same as:
-#2. /permascroll/help
+# 2. /permascroll/help
 # 3. :jump from locspec:1~0.421 to 1.1.0.2.0.1.0.1~0.1
 # 4. :style from  to locspec:1~
 # 5. : from locspec:1~0.1
 #
 @ :type1 from /file to /node at :1.1~0.1
-
 @ :type2 
     from    /file 
     to      /node 

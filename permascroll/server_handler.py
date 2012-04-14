@@ -7,6 +7,7 @@ XXX: this must be the dirtiest file, loose nuts and bolts ahead!
 import cgi
 from cgi import parse_qs
 import logging
+from StringIO import StringIO
 import uuid
 import wsgiref
 
@@ -16,7 +17,8 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.ext.webapp.util import run_wsgi_app
 
-from permascroll import rc, model, util, api, xu88
+from permascroll import rc
+from permascroll import model, util, api, xu88
 from permascroll.exception import *
 
 
@@ -132,10 +134,10 @@ class NodeHandler(AbstractHandler):
                 else: kind = 'entry'
             elif tcnt == 3:
                 if not newcroot: kind = 'entry'
-                else: 
+                else:
                     raise RouteError("Node view does not accept post for %s" %
                             t_addr)
-            else: 
+            else:
                 raise RouteError("Node view does not accept post for %s" %
                         t_addr)
         return api.create(t_addr, kind=kind, data=data, **props)
@@ -178,46 +180,52 @@ class ContentHandler(AbstractHandler):
         "Print content for virtual positions at address or in range. "
         if not hasattr(span_or_address, 'start'):
             addr = span_or_address
-            ccnt = addr.depth()#len(span_or_address.split_all())  
-            if ccnt >= 5: 
+            ccnt = addr.depth()
+            if ccnt >= 5:
                 # Retrieve one or more vpos for vstr in Entry
-                raise Exception("Vpos unhandled")
-            elif ccnt == 4: # redirect to full length for vstr in Entry
-                node, vtype = span_or_address.split()
+                raise Exception("Vpos unhandled: %s" % ccnt)
+
+            elif ccnt == 4: 
+                # Retrieve full vdata for given vstream of Entry
+                node, vtype = addr.split()
                 assert vtype.isroot, vtype
+                # Retrieve Entry vstream
                 entry = api.get(node)
-                # XXX: db import.. move to API
-                from google.appengine.ext import db
-                logging.info([vtype, entry.content])
-                vstr = db.get(entry.content[vtype[0]-1])
-                start = span_or_address
-                #offset = xu88.Offset(
-                #        start.split()[0].subcomponent(entry.leafs+1).digits)
-                # FIXME: ugly:
-                offset = xu88.Offset((len(start)-1) * '0.' +
-                        str(entry.leafs))
-                span = xu88.Span(start, offset)
-                #print span, `span`, str(span)
-                #print span.start
-                #print span.end()
+                # LOCAL
+                ## XXX: db import.. move to API
+                #from google.appengine.ext import db
+                #logging.info([vtype, entry.content])
+                #vstr = db.get(entry.content[vtype[0]-1])
+                #start = span_or_address
+                ##offset = xu88.Offset(
+                ##        start.split()[0].subcomponent(entry.leafs+1).digits)
+                ## FIXME: ugly:
+                #offset = xu88.Offset((len(start)-1) * '0.' +
+                #        str(entry.leafs))
+                #span = xu88.Span(start, offset)
+                ##print span, `span`, str(span)
+                ##print span.start
+                ##print span.end()
+                vdata = entry.fetch_content(vtype[0])
+                # Identify vstream
+                span = entry.get_content_span()
                 self.response.headers["Content-Location"] = ''
-                from StringIO import StringIO
                 s = StringIO()
                 span.write(s)
                 self.response.headers["Content-ID"] = s.getvalue()
                 self.response.headers["Content-Location"] = '/content/%s' %\
                     s.getvalue().replace('.0.', '/')
-                #print type(vstr.data)
-                return vstr.data
-                #print span.write()
-            elif ccnt == 3: # redirect to a list of all vstr
+                return vdata.data
+
+            elif ccnt == 3: 
+                # redirect to a list of all vstr for Entry
                 # Retrieve all of vstr in Entry
-                start = span_or_address
+                start = addr
                 node = api.get(start) # Get Entry
                 #print node
-                offset = xu88.Offset((len(span_or_address)-2) * '0.' +
+                offset = xu88.Offset((len(addr)-2) * '0.' +
                         str(node.leafs))
-                span = xu88.Span(span_or_address, offset)
+                span = xu88.Span(addr, offset)
                 #print span
             else:
                 raise "RouteError: /content/%s" % addr
@@ -231,8 +239,7 @@ class ContentHandler(AbstractHandler):
         "Append content as entry in directory, import from EDL. "
         if not mediatype:
             mediatype = 'text/plain'
-        ccnt = address.depth()#len(address.split_all())
-        #assert ccnt == 2 or ccnt == 4, address
+        ccnt = address.depth()
         assert ccnt == 2, address
         logging.info("Request to store %s at %s", mediatype, address)
         if mediatype == 'text/plain':
@@ -284,7 +291,7 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
         Accepts multipart/form-data.
         The data part  may have a filename and content-type.
         """
-        # have not seen this work yet with curl, perhaps try out the form-example                
+        # have not seen this work yet with curl, perhaps try out the form-example
         upload_files = self.get_uploads('data')
         logging.info(upload_files)
         blob_info = upload_files[0]
@@ -345,7 +352,7 @@ class FrontPage(AbstractHandler):
                     'There is neither <em>transclusion</em> nor <em>parallel markup</em>&mdash;'
                     'All Your Bytestreams Are Belong To <del>XUL</del><ins>HTML</ins>.  '
                     '</p>' % (
-                        model.get_count('virtual'), 
+                        model.get_count('virtual'),
                         model.get_count('entry'),
                         model.get_count('channel'),
                         ),
@@ -360,7 +367,7 @@ class FrontPage(AbstractHandler):
     #                ' </form> ',
                     header='<p class="crumbs">Permascroll &raquo; Frontpage </p>',footer='' )
         #    self.response.headers['ETag'] = etag
-        
+
 
 
 
@@ -440,30 +447,30 @@ endpoints = [
     # /node/[[:address/]:address/]:address:width
     (r'/node/(%(tumbler)s%(width)s)' % d, QueryHandler),
     (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, QueryHandler),
-    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, 
+    (r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d,
         QueryHandler),
     # Content and content range:
     # /node/:address/:address/[:address/:address:width]
     (r'/content/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s?)' % d,
         ContentHandler),
     (r'/content/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
-        '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d, 
+        '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d,
         ContentHandler),
     # TODO:upload blobs?
     (r'/upload/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s)' % d,
         UploadHandler),
     #(r'/upload/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
-    #    '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d, 
+    #    '(?:%(tumbler)s(?:%(sep)s%(tumbler)s)*(?:%(width)s)?)?)' % d,
     #    UploadHandler),
     #(r'/node/(%(tumbler)s%(sep)s%(tumbler)s%(sep)s%(tumbler)s%(sep)s'
-    #  '%(tumbler)s%(sep)s)download' % d, 
+    #  '%(tumbler)s%(sep)s)download' % d,
     #    DownloadHandler),
 
     # http:/.test/1.1/1.1+0.1
     (r'/.test/(%(tumbler)s)%(sep)s(%(tumbler)s%(width)s)' % d, 
         TumblerTestHandler),
 
-    (r'/search' % d, 
+    (r'/search' % d,
         SearchHandler),
 
     #(r'/feed/([1-9][0-9]*)/entry/([1-9][0-9]*)/?', EntryHandler),
