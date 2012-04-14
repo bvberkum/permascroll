@@ -100,7 +100,8 @@ test()
 CURL=" --trace-ascii - "
 #CURL=$CURL" -L http://permascroll.appspot.com"
 #CURL=$CURL" -L http://localhost:8083"
-hostname | read ADDR
+#hostname | read ADDR
+ADDR=`hostname`
 echo ADDR=$ADDR
 CURL=$CURL" -L http://$ADDR:8083"
 CURL=" --fail "$CURL

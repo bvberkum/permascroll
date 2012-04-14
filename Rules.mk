@@ -10,10 +10,10 @@ CLN                 += $(shell find -L $d -iname '*.pyc' ) \
 
 #      ------------ --
 
-XMLRPCSERVER        := lib/xmlrpcserver-0.99.2.tar.gz
+XMLRPCSERVER        := xmlrpcserver-0.99.2
 TRGT                += $/lib.zip
 
-$/lib.zip: Makefile
+$/lib.zip: $/Rules.mk 
 	cd lib;zip $@ -r zope \
 		-x '*/.svn*' -x '*/.bzr*' -x '*.pyc'; mv $@ ..
 
@@ -21,35 +21,45 @@ $/lib/link:
 	@\
 	echo "These may need to be resolved manually:"
 	cd lib;\
-	if test ! -e $(XMLRPCSERVER); then \
+	if test ! -e xmlrpcserver; then \
         if test ! -f $(XMLRPCSERVER).tar.gz; then \
-            wget http://www.julien-oster.de/projects/xmlrpcserver/dist/$(XMLRPCSERVER); \
+            wget http://www.julien-oster.de/projects/xmlrpcserver/dist/$(XMLRPCSERVER).tar.gz; \
         fi; \
-        tar xzvf $(XMLRPCSERVER).tar.gz; fi; \
-	ln -s /srv/project-mpe/cllct/lib/python cllct;\
-	ln -s /srv/project-mpe/gate/src/gate;\
-	ln -s /srv/project-mpe/gate/src/gate;\
-	ln -s /srv/project-mpe/docutils-ext/dotmpe;\
-	ln -s /srv/project-mpe/uriref/src/py/uriref.py;\
-	ln -s /src/python-filelike/filelike.git/filelike;\
-	ln -s /srv/project-mpe/vestige;\
-	ln -s /src/python-breve/latest/breve;\
-	ln -s /src/nabu/working/lib/python/nabu;\
-	ln -s /src/python-docutils/latest/trunk/docutils/docutils;\
-	ln -s /src/python-gae-sessions/latest/gaesessions;\
-	ln -s /usr/share/pyshared/roman.py;\
-	ln -s /usr/lib/python2.5/site-packages/zope;
+        tar xzvf $(XMLRPCSERVER).tar.gz; fi;
+	-cd lib;ln -s /srv/project-mpe/cllct/lib/python cllct;
+	-cd lib;ln -s /srv/project-mpe/gate/src/gate;
+	-cd lib;ln -s /srv/project-mpe/gate/src/gate;
+	-cd lib;ln -s /srv/project-mpe/docutils-ext/dotmpe;
+	-cd lib;ln -s /srv/project-mpe/uriref/uriref;
+	-cd lib;ln -s /src/python-filelike/filelike.git/filelike;
+	-cd lib;ln -s /srv/project-mpe/vestige;
+	-cd lib;ln -s /src/python-breve/latest/breve;
+	-cd lib;ln -s /src/nabu/working/lib/python/nabu;
+	-cd lib;ln -s /src/python-docutils/latest/trunk/docutils/docutils;
+	-cd lib;ln -s /src/python-gae-sessions/latest/gaesessions;
+	-cd lib;ln -s /usr/share/pyshared/roman.py;
+	-cd lib;ln -s /usr/lib/python2.5/site-packages/zope;
 
 .PHONY: $/lib/link
 
 #      ------------ --
 
-APP_ENGINE          := $(shell echo /src/google-appengine/google_appengine_*/|\
-                        grep -v '\*'|sort -g|tr ' ' '\n'|tail -1)
+gae-init::
+	$Dtools/init.sh
+
+.PHONY: gae-init
+
+#      ------------ --
+
+APP_ENGINE          := /src/google-appengine/working
+#APP_ENGINE          := $(shell echo /src/google-appengine/google_appengine_*/|\
+#                        grep -v '\*'|sort -g|tr ' ' '\n'|tail -1)
 ifeq ($(APP_ENGINE), )
 $(error Need GAE somewhere in /src/google-appengine/google_appengine_*)
+else
+$(info GAE dir $(shell cd $(APP_ENGINE);pwd -P))
 endif
-ADDRESS             := $(shell hostname -s )
+ADDRESS             := $(shell hostname)
 
 srv:: ADDRESS ?=
 srv::
@@ -66,7 +76,7 @@ srv::
 
 PY_TEST_$d          := $/test/main.py
 TEST                += test_$d
-.PHONY:                test_$d
+.PHONY:                test_$d gae-test
 
 test_$d:
 	@$(call log_line,info,$@,Starting tests..)
@@ -75,7 +85,10 @@ test_$d:
 	TEST_PY=test/py/main.py;TEST_LIB=.;\
     $(test-python)
 
-test:: test_$d
+gae-test::
+	$Dtools/init.sh
+
+test:: test_$d gae-test
 
 #      ------------ --
 #
