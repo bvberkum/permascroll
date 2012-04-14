@@ -4,14 +4,16 @@ MK                  += $(MK_$d)
 #
 #      ------------ --
 
-CLN                 += $(shell find -L $d -iname '*.pyc' )
+CLN                 += $(shell find -L $d -iname '*.pyc' ) \
+	.tmp/datastore \
+	.tmp/blobstore
 
 #      ------------ --
 
-XMLRPCSERVER        := xmlrpcserver-0.99.2.tar.gz
+XMLRPCSERVER        := lib/xmlrpcserver-0.99.2.tar.gz
 TRGT                += $/lib.zip
 
-$/lib.zip:
+$/lib.zip: Makefile
 	cd lib;zip $@ -r zope \
 		-x '*/.svn*' -x '*/.bzr*' -x '*.pyc'; mv $@ ..
 
@@ -19,6 +21,11 @@ $/lib/link:
 	@\
 	echo "These may need to be resolved manually:"
 	cd lib;\
+	if test ! -e $(XMLRPCSERVER); then \
+        if test ! -f $(XMLRPCSERVER).tar.gz; then \
+            wget http://www.julien-oster.de/projects/xmlrpcserver/dist/$(XMLRPCSERVER); \
+        fi; \
+        tar xzvf $(XMLRPCSERVER).tar.gz; fi; \
 	ln -s /srv/project-mpe/cllct/lib/python cllct;\
 	ln -s /srv/project-mpe/gate/src/gate;\
 	ln -s /srv/project-mpe/gate/src/gate;\
@@ -43,12 +50,13 @@ ADDRESS             := $(shell hostname -s )
 
 srv:: ADDRESS ?=
 srv::
+	GAE_DEV=True \
 	$(APP_ENGINE)/dev_appserver.py ./ \
 		--address $(ADDRESS) \
 		--port 8083 \
 		--blobstore_path .tmp/blobstore \
-		--datastore_path .tmp/datastore
-	#--debug_imports
+		--datastore_path .tmp/datastore \
+	    --debug_imports
 .PHONY: srv
 
 #      ------------ --
