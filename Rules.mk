@@ -46,6 +46,9 @@ $/lib/link:
 
 APP_ENGINE          := $(shell echo /src/google-appengine/google_appengine_*/|\
                         grep -v '\*'|sort -g|tr ' ' '\n'|tail -1)
+ifeq ($(APP_ENGINE), )
+$(error Need GAE somewhere in /src/google-appengine/google_appengine_*)
+endif
 ADDRESS             := $(shell hostname -s )
 
 srv:: ADDRESS ?=
