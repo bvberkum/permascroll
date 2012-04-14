@@ -100,7 +100,7 @@ test()
 CURL=" --trace-ascii - "
 #CURL=$CURL" -L http://permascroll.appspot.com"
 #CURL=$CURL" -L http://localhost:8083"
-CURL=$CURL" -L http://robin.pandora.dennenweg:8083"
+CURL=$CURL" -L http://iris.dennenweg:8083"
 CURL=" --fail "$CURL
 #CURL="-o /dev/null "$CURL
 CURL="curl "$CURL

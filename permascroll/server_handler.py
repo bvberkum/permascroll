@@ -188,6 +188,7 @@ class ContentHandler(AbstractHandler):
                 entry = api.get(node)
                 # XXX: db import.. move to API
                 from google.appengine.ext import db
+                logging.info([vtype, entry.content])
                 vstr = db.get(entry.content[vtype[0]-1])
                 start = span_or_address
                 #offset = xu88.Offset(
@@ -196,9 +197,9 @@ class ContentHandler(AbstractHandler):
                 offset = xu88.Offset((len(start)-1) * '0.' +
                         str(entry.leafs))
                 span = xu88.Span(start, offset)
-                print span, `span`, str(span)
-                print span.start
-                print span.end()
+                #print span, `span`, str(span)
+                #print span.start
+                #print span.end()
                 self.response.headers["Content-Location"] = ''
                 from StringIO import StringIO
                 s = StringIO()
@@ -213,11 +214,11 @@ class ContentHandler(AbstractHandler):
                 # Retrieve all of vstr in Entry
                 start = span_or_address
                 node = api.get(start) # Get Entry
-                print node
+                #print node
                 offset = xu88.Offset((len(span_or_address)-2) * '0.' +
                         str(node.leafs))
                 span = xu88.Span(span_or_address, offset)
-                print span
+                #print span
             else:
                 raise "RouteError: /content/%s" % addr
         else:
@@ -458,7 +459,8 @@ endpoints = [
     #  '%(tumbler)s%(sep)s)download' % d, 
     #    DownloadHandler),
 
-    (r'/.test/(%(tumbler)s%(sep)s%(tumbler)s%(width)s)' % d, 
+    # http:/.test/1.1/1.1+0.1
+    (r'/.test/(%(tumbler)s)%(sep)s(%(tumbler)s%(width)s)' % d, 
         TumblerTestHandler),
 
     (r'/search' % d, 

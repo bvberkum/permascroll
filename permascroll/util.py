@@ -537,8 +537,9 @@ def http_q(*fields, **kwds): # {{{
                     value = aspec[idx](urllib.unquote(data))
                 except (TypeError, ValueError), e:
                     # TODO: report warning in-document
+                    logger.warning([idx, args[idx], e, aspec[idx], qspec])
                     logger.warning("Error applying argument convertor for '%s', "
-                            "message: %s, convertor: %s", key, e, qspec[key])
+                            "message: %s, convertor: %s", idx, e, qspec[idx])
                 # always replace argument
                 args = args[:idx-ignorespecs] + (value,) + args[idx-ignorespecs+1:]
             logger.debug("Converted arguments %s", args)

@@ -16,33 +16,44 @@ Permascroll
 
 .. rubric:: This project describes a `permascroll` implementation for `Google App Engine`.
 
-.. rubric:: What follows is a short introduction. From the 
+.. note:: 
+
+   What follows is a short introduction that needs to be straightened
+   out. Related experimental projects are mentioned and then components specific
+   to this project are discussed.
 
 
-Let each publication be a set of symbols.
-Let each symbol node have *a size of 1*.
-The interpretation of each node is left to the client.
+- Let each publication be a set of symbols.
+- Let each symbol node have *a size of 1*.
 
-Let there additionally be *zero-width* nodes, 'virtual points' that only store a pointer to a range of symbols elsewhere. 
-Now a single link enables transclusion: virtual duplication and transpositioning of pieces of existing publications.
-Multi-way links enable a great deal of forms, overlaying structure on the sets of symbols.
+The interpretation of each node is left to the client?
+XXX: or does permascrip incorporate muxdems?
+
+- Let there additionally be *zero-width* nodes, 'virtual points' that only store a pointer to a range of symbols elsewhere. 
+- Now a single link enables transclusion: virtual duplication and transpositioning of pieces of existing publications.
+- Multi-way links enable a great deal of forms, overlaying structure on the sets of symbols.
+
 The interpretation of these links again being left to the client.
 
 This, at a minimum, is the essence of the Xanalogical system (of hypertext, hyperstructure) that Ted Nelson describes.
 
+The goal is to support an Xanalogical addressing space. 
+
+The end objective is an Xanalogical Edit Decision format/protocol that overlays
+or can be incorporated into Web (WWW, as in HTTP/(X)HTML) applications.
+
+PS and other projects
+---------------------
+- permascroll supports permanent addressing of content
+- gate supports HTTP entity handling and messaging
+- scrow supports format (de)muxing, and generic document session handling.
+- translit is an Open Source transliterature demonstration, above projects may
+  want to be compatible.
 
 Technicalities
 --------------
-The given functional description is intentionally very generic.
-Because if an implementation reaches such a level of generality, 
-then there is nothing standing in the way of system integration.
-Whatever that system may be.
-But lets get on with the details.
-
-
-1. The first implication is a permanent address space. 
+1. The first requirement is a permanent address space. 
 2. The second a set of meaningful or useful rules for linking. 
-
 
 The first implies a choice of encoding.
 The easy way is to shout 'unicode!' and have a solution to map many known scripts to and from a multibyte encoding. 
@@ -51,8 +62,8 @@ many of which (hopefully) have new, non-sequential presentations to contrast
 with the perception of media as being linear.
 
 Secondly, only if a client knows the document structure is it going to handle 
-that structure in any specific, non-generic way. 
-
+that structure in any specific, non-generic way. This is a part that is going to
+hinge more on convention.
 
 Overview
 --------
@@ -62,7 +73,8 @@ There may be different types of data, with different types of address spaces.
 
 Addresses start with three components in the form of local tumbler addresses,
 one for the identity of the host, one for the owner, 
-and one for the publication itself.
+and one for the publication itself. These threes are organized in several HTTP
+access points, such as:
 
 - /node/1.1/1.2/5.3.1
 
@@ -80,27 +92,58 @@ but since this width is expressed in a difference tumbler, the exact number of
 virtual positions will not be recorded in this tree.
 
 The tumbler-component approach gives a node-address two forms of hierarchical relationship. 
-One is intrinsical to tumblers: each sub-address lies in between parent + 1.
-The other is the linking of the components in a hierarchical way.
+One is intrinsical to tumblers: each component has sub-address lies in between parent + 1.
+The other is the linking of several addresses as components of a larger address in a hierarchical way.
 
-Each publication node has a width that is derived from the contents it links to.
+Each node has a width that is a count of the sub-nodes its links to.
+Each node as a length of positions that is a count of is 
 
 These tumbler adresses are local, meaning they are not in any way distributed.
 
 TODO: implement Entry to link to append-only unicode literal and link space.
 
+Development
+------------
+GIT branches
+    master 
+        Main development through 2010, 2011.
+
 
 HTTP service
 ------------
 
+Node
+______________________________________________________________________________
+
+**node** is the main structural resource, it organizes metadata to describe
+the tumbler tree and what is at its leafs.
+Tumblers are organized into addresses of 3 components, plus one component for
+the virtual streams.
+
+Allows application/x-www-form-urlencoded posts to add and update nodes.
+
+The metadata indicates the number of subdigits called positions, and
+subcomponents called sub-adresses.
+
+/node/*
+  :mediatype: application/x-mpe-permascroll
+  :access: anonymous, group, user or sysadmin
+  :allow: GET, POST
+  :POST: depends on POST entity. Without 'update' key, create new node by incrementing position below tumbler,
+    and return new node description. With 'update' key, replaces node properties
+    where possible with values from POST entity, but only if update key matches
+    entity tag. (both are typical for /node/).  XXX: could also allow POSTing to
+    /node/ (without address) but with update/ETag key?
+  :GET: 
+  :params: 
+    --update
+    --title  The title of the node.
+
 /node/[0-9]+
   :type: Docuverse
-  :GET: returns node description
-  :POST: increment tumbler, create Docuverse and return node description (\*typical)
   :access: sysadmin
-  :params: title
-
-  ::
+  :POST: increment tumbler, create Docuverse and return node description (\*typical)
+  :GET: ::
 
     $ curl http://permascroll.appspot.com/node/1 -F title="My Docuverse" 
     [My Docuverse, with 0 positions at 1.1, and 0 sub-adresses]
@@ -120,13 +163,15 @@ HTTP service
 
 /node/1.1/1/1
   :type: Entry
+  :params:
+    --data  Literal string to use as content.
 
   ::
 
     $ curl http://permascroll.appspot.com/node/1.1/1/1.1 -X POST
     [Untitled Entry, with 0 positions at 1.1.0.1.0.1, and 0 sub-adresses]
 
-  Which is not very useful, but can be appropiated given a title and allows
+  Which is not very useful, but can be appropiate given a title and allows
   grouping of entry sequences. Normally, ``/upload/`` is used however for
   creating `Entry` nodes.
 
@@ -134,8 +179,37 @@ HTTP service
   :type: Node/Directory/Entry query
   :GET: returns a list of node descriptions
 
+Content
+______________________________________________________________________________
+
+The media type here should be adjusted to the content, but each will need a
+muxdem implementation to and from any of the standardized content streams.
+
+/content/1.1/1/1
+  :type: Entry
+
+/content/1.1/1/1/1
+  :type: LiteralContent
+
+  Character addresses. Valid range 1.1 - 1.n
+
+/content/1.1/1/1/2
+  :type: LinkContent
+
+  Link addresses. Valid range 2.1 - 2.n
+
+/content/1.1/1/1/3
+  :type: Audio..
+
+/content/1.1/1/1/4
+  :type: Video..
+
+Upload
+______________________________________________________________________________
+
 /upload/1.1/1/1/1
-  :POST: accept and store content, increment tumbler, create Entry and acknowledge new node if successful 
+  :POST: accept and store content, increment tumbler, create Entry and 
+    acknowledge new node if successful 
 
   ::
 
@@ -154,6 +228,7 @@ PEDL
 This is an preliminary version of an import/export format for Permascroll data.
 
 * Each entry consists of two extendable data spaces.
+
 * Each file holds content/links for one or more entries.
 * Each line is a comment, others are part of an PEDL statement.
 * PEDL statements are strings, prefixed by a leader character sequence.

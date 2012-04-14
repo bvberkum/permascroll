@@ -30,6 +30,7 @@ def get(addr):
         if tccnt == 2: kind = Directory
         elif tccnt == 3: kind = Entry
 
+        logging.info("Retrieving %s", addr)
         node = kind.get_by_key_name(str(addr))
 
         if not node:

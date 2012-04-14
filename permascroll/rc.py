@@ -1,6 +1,9 @@
 """Configuration
 """
 
+import os
+DEV = os.environ.get('GAE_DEV') == "True"
+
 PATH = '2009/12/31/permascroll'
 
 TEMPLATES = {
@@ -57,12 +60,18 @@ HEADERS = DATE_HEADERS + (
 
 HOST = 'permascroll.appspot.com'
 
+
 import os
 
 PROJ_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 LIB = os.path.join(PROJ_ROOT, 'lib.zip')
 
+
 import sys
 
 sys.path.insert(0, LIB)
+
+# XXX: this is not working?
+if DEV:
+    sys.path.insert(0, 'lib')
 
