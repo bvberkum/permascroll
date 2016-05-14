@@ -64,15 +64,17 @@ HOST = 'permascroll.appspot.com'
 import os
 
 PROJ_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-#LIB = os.path.join(PROJ_ROOT, 'lib.zip')
-LIB = os.path.join(PROJ_ROOT, 'lib')
+LIB = os.path.join(PROJ_ROOT, 'lib.zip')
+#LIB = os.path.join(PROJ_ROOT, 'lib')
 
 
 import sys
 
-sys.path.insert(0, LIB)
+sys.path.insert(0,
+'/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/zope.interface-4.1.0-py2.7-macosx-10.6-intel.egg')
+#sys.path.insert(0, LIB)
 
 # XXX: this is not working?
-if DEV:
-    sys.path.insert(0, 'lib')
-
+#if DEV:
+sys.path.insert(0, 'lib')
+#

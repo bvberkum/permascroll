@@ -14,7 +14,7 @@ XMLRPCSERVER        := xmlrpcserver-0.99.2
 TRGT                += $/lib.zip
 
 $/lib.zip: $/Rules.mk 
-	cd lib;zip $@ -r zope \
+	cd lib;zip $@ -r . \
 		-x '*/.svn*' -x '*/.bzr*' -x '*.pyc'; mv $@ ..
 
 $/lib/link:
@@ -68,8 +68,7 @@ srv::
 		--address $(ADDRESS) \
 		--port 8083 \
 		--blobstore_path .tmp/blobstore \
-		--datastore_path .tmp/datastore \
-	    --debug_imports
+		--datastore_path .tmp/datastore 
 .PHONY: srv
 
 #      ------------ --
